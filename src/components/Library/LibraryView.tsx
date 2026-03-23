@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BookOpen, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useBooks } from '@/hooks/useBooks'
 import { useBookWordStats } from '@/hooks/useWords'
 import BookCard from './BookCard'
@@ -32,9 +32,7 @@ export default function LibraryView() {
         </div>
       ) : books.length === 0 ? (
         <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
-          <div className="mb-4 rounded-full bg-cream-dark p-4">
-            <BookOpen className="h-10 w-10 text-brown-muted" />
-          </div>
+          <img src="/logo.png" alt="Lesen" className="mb-4 h-16 w-16 opacity-60" />
           <p className="text-lg font-medium text-brown">Your library is empty</p>
           <p className="mt-1 text-sm text-brown-muted">Tap + to import your first text</p>
         </div>

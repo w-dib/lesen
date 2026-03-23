@@ -24,7 +24,7 @@ export default function BottomTabs() {
             key={path}
             onClick={() => navigate(path)}
             className={cn(
-              'flex flex-1 flex-col items-center gap-0.5 pb-[env(safe-area-inset-bottom,8px)] pt-2 text-xs transition-colors',
+              'flex flex-1 flex-col items-center gap-0.5 pb-[calc(env(safe-area-inset-bottom,8px)+4px)] pt-2 text-xs transition-colors',
               active ? 'text-brown font-medium' : 'text-brown-muted'
             )}
           >
