@@ -52,7 +52,7 @@ export default function SettingsView() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-5 pt-[env(safe-area-inset-top,16px)]">
+      <div className="px-5 pt-[calc(env(safe-area-inset-top,16px)+5px)]">
         <h1 className="mb-4 text-2xl font-bold text-brown">Settings</h1>
       </div>
 
@@ -147,7 +147,10 @@ export default function SettingsView() {
 
         {/* About */}
         <div className="mt-4 border-t border-brown-muted/15 pt-6 text-center">
-          <p className="font-serif text-lg font-semibold text-brown">Lesen</p>
+          <div className="flex items-center justify-center gap-2">
+            <img src="/logo.png" alt="Lesen" className="h-6 w-6" />
+            <p className="font-serif text-lg font-semibold text-brown">Lesen</p>
+          </div>
           <p className="mt-0.5 text-xs text-brown-muted">
             A mobile-first German reading &amp; vocabulary app
           </p>

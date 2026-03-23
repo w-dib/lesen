@@ -125,7 +125,7 @@ export default function VocabularyView() {
   return (
     <div className="flex flex-1 flex-col">
       {/* Header */}
-      <div className="px-5 pb-2 pt-[env(safe-area-inset-top,16px)]">
+      <div className="px-5 pb-2 pt-[calc(env(safe-area-inset-top,16px)+5px)]">
         <h1 className="mb-3 text-2xl font-bold text-brown">Vocabulary</h1>
 
         {/* Search */}

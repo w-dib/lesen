@@ -79,4 +79,13 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  server: {
+    proxy: {
+      '/api/translate': {
+        target: 'https://api-free.deepl.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/translate/, '/v2/translate'),
+      },
+    },
+  },
 })

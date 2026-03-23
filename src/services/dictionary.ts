@@ -1,6 +1,5 @@
 import { db } from '@/db/database'
 
-const DEEPL_API_URL = 'https://api-free.deepl.com/v2/translate'
 const API_KEY = import.meta.env.VITE_DEEPL_API_KEY as string | undefined
 
 interface DeepLResponse {
@@ -28,7 +27,7 @@ async function callDeepL(text: string): Promise<string | null> {
   if (!API_KEY) return null
 
   try {
-    const res = await fetch(DEEPL_API_URL, {
+    const res = await fetch('/api/translate', {
       method: 'POST',
       headers: {
         'Authorization': `DeepL-Auth-Key ${API_KEY}`,

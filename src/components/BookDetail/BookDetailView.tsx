@@ -1,10 +1,12 @@
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, CheckCircle2 } from 'lucide-react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { Button } from '@/components/ui/button'
 import { useBook } from '@/hooks/useBooks'
 import { useChapters } from '@/hooks/useChapters'
 import { useBookWordStats } from '@/hooks/useWords'
-import { db } from '@/db/database'
+import { db, type Chapter } from '@/db/database'
+import { extractUniqueWords } from '@/services/textProcessor'
 
 function generateColor(title: string): string {
   let hash = 0
@@ -21,6 +23,19 @@ export default function BookDetailView() {
   const book = useBook(id)
   const chapters = useChapters(id)
   const stats = useBookWordStats(id)
+
+  // Per-chapter: count of "new" words (0 means chapter is "complete")
+  const chapterNewCounts = useLiveQuery(async () => {
+    if (!chapters?.length) return new Map<number, number>()
+    const counts = new Map<number, number>()
+    for (const ch of chapters) {
+      const uniqueWords = extractUniqueWords(ch.content)
+      const wordRecords = await db.words.where('text').anyOf(uniqueWords).toArray()
+      const newCount = wordRecords.filter(w => w.level === 'new').length
+      counts.set(ch.id, newCount)
+    }
+    return counts
+  }, [chapters])
 
   if (!book) {
     return (
@@ -74,18 +89,28 @@ export default function BookDetailView() {
           Chapters
         </h2>
         <div className="flex flex-col gap-1.5">
-          {chapters?.map(chapter => (
-            <button
-              key={chapter.id}
-              onClick={() => openChapter(chapter.id)}
-              className="flex items-center justify-between rounded-lg border border-brown-muted/10 bg-white px-4 py-3 text-left transition-colors hover:bg-cream-dark/50 active:bg-cream-dark"
-            >
-              <div>
-                <p className="text-sm font-medium text-brown">{chapter.title}</p>
-                <p className="text-xs text-brown-muted">{chapter.wordCount.toLocaleString()} words</p>
-              </div>
-            </button>
-          ))}
+          {chapters?.map(chapter => {
+            const newCount = chapterNewCounts?.get(chapter.id)
+            const isComplete = newCount === 0
+            return (
+              <button
+                key={chapter.id}
+                onClick={() => openChapter(chapter.id)}
+                className="flex items-center justify-between rounded-lg border border-brown-muted/10 bg-white px-4 py-3 text-left transition-colors hover:bg-cream-dark/50 active:bg-cream-dark"
+              >
+                <div>
+                  <p className="text-sm font-medium text-brown">{chapter.title}</p>
+                  <p className="text-xs text-brown-muted">
+                    {chapter.wordCount.toLocaleString()} words
+                    {newCount != null && newCount > 0 && ` · ${newCount} new`}
+                  </p>
+                </div>
+                {isComplete && (
+                  <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-gold" />
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

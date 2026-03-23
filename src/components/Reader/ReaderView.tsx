@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ChevronLeft, ChevronRight, CheckCheck } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, CheckCheck, EyeOff } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Button } from '@/components/ui/button'
 import { getReaderFontSize } from '@/components/Settings/SettingsView'
@@ -66,18 +66,60 @@ export default function ReaderView() {
     setSelectedIdx(null)
   }, [])
 
+  // Save lastChapterId and scroll position
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout>>()
+
+  useEffect(() => {
+    db.books.update(bId, { lastChapterId: cId })
+  }, [bId, cId])
+
+  // Restore scroll position once content is rendered
+  const restoredRef = useRef(false)
+  useEffect(() => {
+    if (restoredRef.current || !scrollRef.current || !tokens.length) return
+    restoredRef.current = true
+    db.books.get(bId).then(book => {
+      if (book?.scrollPosition && book.lastChapterId === cId && scrollRef.current) {
+        const el = scrollRef.current
+        requestAnimationFrame(() => {
+          el.scrollTop = book.scrollPosition! * (el.scrollHeight - el.clientHeight)
+        })
+      }
+    })
+  }, [bId, cId, tokens.length])
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+
+    const handleScroll = () => {
+      clearTimeout(scrollTimerRef.current)
+      scrollTimerRef.current = setTimeout(() => {
+        const fraction = el.scrollTop / (el.scrollHeight - el.clientHeight || 1)
+        db.books.update(bId, { scrollPosition: fraction })
+      }, 300)
+    }
+
+    el.addEventListener('scroll', handleScroll, { passive: true })
+    return () => {
+      clearTimeout(scrollTimerRef.current)
+      el.removeEventListener('scroll', handleScroll)
+    }
+  }, [bId])
+
   // Chapter navigation
   const currentChapterIndex = chapters?.findIndex((c: Chapter) => c.id === cId) ?? -1
   const prevChapter = chapters && currentChapterIndex > 0 ? chapters[currentChapterIndex - 1] : null
   const nextChapter = chapters && currentChapterIndex < (chapters.length - 1) ? chapters[currentChapterIndex + 1] : null
 
-  // Mark all new words as known
-  async function handleMarkAllKnown() {
+  // Mark all new words as known or ignored
+  async function handleMarkAllNew(level: 'known' | 'ignored') {
     const now = new Date()
     const newWords = [...(wordMap?.values() ?? [])].filter(w => w.level === 'new')
     const lemmas = [...new Set(newWords.map(w => w.lemma))]
     for (const lemma of lemmas) {
-      await db.words.where('lemma').equals(lemma).modify({ level: 'known', updatedAt: now })
+      await db.words.where('lemma').equals(lemma).modify({ level, updatedAt: now })
     }
   }
 
@@ -120,7 +162,7 @@ export default function ReaderView() {
       </div>
 
       {/* Reading area */}
-      <div className="flex-1 overflow-y-auto px-5 py-6">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6">
         <div className="leading-[2] text-brown" style={{ fontSize: `${getReaderFontSize()}px` }}>
           {tokens.map((token, i) => (
             <WordSpan
@@ -132,12 +174,16 @@ export default function ReaderView() {
           ))}
         </div>
 
-        {/* Mark all known button */}
+        {/* Mark all buttons */}
         {newCount > 0 && (
-          <div className="mt-8 flex justify-center pb-4">
-            <Button variant="outline" size="sm" onClick={handleMarkAllKnown}>
+          <div className="mx-auto mt-8 flex w-64 flex-col gap-2 pb-4">
+            <Button variant="outline" size="sm" className="w-full" onClick={() => handleMarkAllNew('known')}>
               <CheckCheck className="h-4 w-4" />
               Mark all {newCount} new words as known
+            </Button>
+            <Button variant="outline" size="sm" className="w-full text-brown-muted" onClick={() => handleMarkAllNew('ignored')}>
+              <EyeOff className="h-4 w-4" />
+              Ignore all {newCount} new words
             </Button>
           </div>
         )}

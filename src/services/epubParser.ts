@@ -29,10 +29,10 @@ export async function parseEpub(file: File): Promise<EpubResult> {
   }
 
   // Extract chapters
-  const spine = book.spine as unknown as { each: (fn: (item: { load: (book: unknown) => Promise<{ document: Document }>; href: string }) => void) => void }
+  const spine = book.spine as unknown as { each: (fn: (item: { load: (book: unknown) => Promise<Document>; href: string }) => void) => void }
   const chapters: { title: string; content: string }[] = []
 
-  const spineItems: { load: (book: unknown) => Promise<{ document: Document }>; href: string }[] = []
+  const spineItems: { load: (book: unknown) => Promise<Document>; href: string }[] = []
   spine.each((item) => spineItems.push(item))
 
   // Get TOC for chapter names
@@ -52,9 +52,8 @@ export async function parseEpub(file: File): Promise<EpubResult> {
   for (let i = 0; i < spineItems.length; i++) {
     const item = spineItems[i]
     try {
-      const contents = await item.load(book.load.bind(book))
-      const doc = contents.document
-      const text = extractTextFromDoc(doc)
+      const doc = await item.load(book.load.bind(book))
+      const text = extractTextFromDoc(doc as Document)
       if (text.trim().length > 50) {
         const chapterTitle = tocMap.get(item.href) || `Chapter ${chapters.length + 1}`
         chapters.push({ title: chapterTitle, content: text.trim() })
@@ -69,8 +68,10 @@ export async function parseEpub(file: File): Promise<EpubResult> {
   return { title, chapters, coverUrl }
 }
 
-function extractTextFromDoc(doc: Document): string {
-  const body = doc.body || doc.documentElement
+function extractTextFromDoc(root: Document | Element): string {
+  const body = 'body' in root && root.body
+    ? root.body
+    : root.querySelector?.('body') || root
   if (!body) return ''
 
   // Walk through the DOM and build text with paragraph breaks

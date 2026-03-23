@@ -2,7 +2,9 @@ import { useState, useCallback } from 'react'
 import { Sheet } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Wand2, Loader2 } from 'lucide-react'
 import { db, type Word } from '@/db/database'
+import { translateWord } from '@/services/dictionary'
 import { cn } from '@/lib/utils'
 
 type Level = Word['level']
@@ -30,6 +32,7 @@ interface WordEditSheetProps {
 export default function WordEditSheet({ open, onClose, group }: WordEditSheetProps) {
   const [editTranslation, setEditTranslation] = useState('')
   const [dirty, setDirty] = useState(false)
+  const [translating, setTranslating] = useState(false)
 
   // Sync local state when group changes
   const translation = group?.translation ?? ''
@@ -85,11 +88,34 @@ export default function WordEditSheet({ open, onClose, group }: WordEditSheetPro
         <div>
           <p className="mb-1.5 text-xs font-medium text-brown-muted">Translation</p>
           <div className="flex gap-2">
-            <Input
-              value={editTranslation}
-              onChange={e => { setEditTranslation(e.target.value); setDirty(true) }}
-              placeholder="Enter translation"
-            />
+            <div className="relative flex-1">
+              <Input
+                value={editTranslation}
+                onChange={e => { setEditTranslation(e.target.value); setDirty(true) }}
+                placeholder="Enter translation"
+                className="pr-24"
+              />
+              <button
+                onClick={async () => {
+                  setTranslating(true)
+                  const result = await translateWord(group.lemma)
+                  if (result) {
+                    setEditTranslation(result)
+                    setDirty(true)
+                  }
+                  setTranslating(false)
+                }}
+                disabled={translating}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-md bg-cream-dark px-2 py-1 text-xs font-medium text-brown-muted transition-colors hover:bg-amber/20 hover:text-brown disabled:opacity-50"
+              >
+                {translating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Wand2 className="h-3.5 w-3.5" />
+                )}
+                Translate
+              </button>
+            </div>
             {dirty && (
               <Button size="sm" onClick={handleSaveTranslation}>Save</Button>
             )}

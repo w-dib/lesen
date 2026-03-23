@@ -18,8 +18,11 @@ export default function LibraryView() {
   return (
     <div className="flex flex-1 flex-col">
       {/* Header */}
-      <div className="px-5 pb-2 pt-[env(safe-area-inset-top,16px)]">
-        <h1 className="text-2xl font-bold text-brown">Library</h1>
+      <div className="px-5 pb-2 pt-[calc(env(safe-area-inset-top,16px)+5px)]">
+        <div className="flex items-center gap-2">
+          <img src="/logo.png" alt="Lesen" className="h-7 w-7" />
+          <h1 className="text-2xl font-bold text-brown">Library</h1>
+        </div>
       </div>
 
       {/* Content */}

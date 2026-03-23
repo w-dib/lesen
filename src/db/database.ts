@@ -8,6 +8,8 @@ export interface Book {
   uniqueWords: number
   createdAt: Date
   lastOpenedAt: Date
+  lastChapterId?: number
+  scrollPosition?: number
 }
 
 export interface Chapter {

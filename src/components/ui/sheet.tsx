@@ -23,7 +23,7 @@ export function Sheet({ open, onClose, children, className, title }: SheetProps)
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end">
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end">
       <div
         className="absolute inset-0 bg-black/40 animate-fade-in"
         onClick={onClose}
