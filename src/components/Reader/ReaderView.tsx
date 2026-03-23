@@ -68,7 +68,7 @@ export default function ReaderView() {
 
   // Save lastChapterId and scroll position
   const scrollRef = useRef<HTMLDivElement>(null)
-  const scrollTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   useEffect(() => {
     db.books.update(bId, { lastChapterId: cId })
