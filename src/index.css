@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme {
+  --color-cream: #FAF8F5;
+  --color-cream-dark: #F0EDE8;
+  --color-brown: #3D2E1E;
+  --color-brown-light: #6B5D4F;
+  --color-brown-muted: #9C8E80;
+  --color-amber: #F6D889;
+  --color-orange: #F0B86E;
+  --color-gold: #D4A84B;
+
+  --font-sans: 'DM Sans', system-ui, sans-serif;
+  --font-serif: 'Lora', Georgia, serif;
+
+  --animate-slide-up: slide-up 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+  --animate-fade-in: fade-in 0.2s ease-out;
+}
+
+@keyframes slide-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  background-color: #FAF8F5;
+  color: #3D2E1E;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+}
+
+#root {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Hide scrollbars but keep scroll functionality */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Smooth range input styling */
+input[type="range"] {
+  height: 6px;
+  border-radius: 3px;
+  appearance: none;
+  background: #F0EDE8;
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #D4A84B;
+  cursor: pointer;
+}
