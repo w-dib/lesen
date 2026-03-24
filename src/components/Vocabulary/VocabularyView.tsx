@@ -128,7 +128,7 @@ export default function VocabularyView() {
   return (
     <div className="flex flex-1 flex-col">
       {/* Header */}
-      <div className="px-5 pb-2 pt-[calc(env(safe-area-inset-top,16px)+5px)]">
+      <div className="px-5 pb-2 pt-[calc(env(safe-area-inset-top,16px)+16px)]">
         <div className="mb-3 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-brown">Vocabulary</h1>
           {counts.learning > 0 && (

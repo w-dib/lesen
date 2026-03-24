@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, RotateCcw, Check, X, Loader2, Sparkles } from 'lucide-react'
+import { ArrowLeft, RotateCcw, Check, X, Sparkles, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { db, type Word } from '@/db/database'
 import { useLiveQuery } from 'dexie-react-hooks'
@@ -118,14 +118,17 @@ export default function ReviewView() {
       })
   }, [groups.length]) // Only rebuild on count change, not reference
 
-  const currentCard = sessionCards[currentIdx]
+  const currentCard = sessionCards[currentIdx] as SessionCard | undefined
   const isSessionDone = currentIdx >= sessionCards.length && sessionCards.length > 0
+
+  const [answered, setAnswered] = useState(false)
 
   const recordResult = useCallback(async (correct: boolean) => {
     if (!currentCard) return
 
     const newResult = correct ? 'correct' : 'wrong'
     setResults(prev => [...prev, newResult])
+    setAnswered(true)
 
     // Update streaks in DB
     const { group } = currentCard
@@ -141,15 +144,15 @@ export default function ReviewView() {
         updatedAt: new Date(),
         ...(shouldPromote ? { level: 'known' as const } : {}),
       })
-
-    // Advance to next card
-    setTimeout(() => {
-      setCurrentIdx(prev => prev + 1)
-      setFlipped(false)
-      setSelectedAnswer(null)
-      setClozeRevealed(false)
-    }, shouldPromote ? 1200 : 600)
   }, [currentCard])
+
+  const advanceToNext = useCallback(() => {
+    setCurrentIdx(prev => prev + 1)
+    setFlipped(false)
+    setSelectedAnswer(null)
+    setClozeRevealed(false)
+    setAnswered(false)
+  }, [])
 
   // --- RENDER ---
 
@@ -158,7 +161,7 @@ export default function ReviewView() {
       <div className="flex flex-1 flex-col">
         <ReviewHeader onBack={() => navigate('/vocabulary')} />
         <div className="flex flex-1 flex-col items-center justify-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-gold" />
+          <img src="/logo.png" alt="Loading" className="h-12 w-12 animate-spin" />
           <p className="text-sm text-brown-muted">Generating exercises...</p>
         </div>
       </div>
@@ -238,14 +241,15 @@ export default function ReviewView() {
       </div>
 
       <div className="flex flex-1 flex-col px-5">
-        {currentCard.type === 'flashcard' ? (
+        {currentCard && currentCard.type === 'flashcard' && (
           <FlashcardExercise
             card={currentCard}
             flipped={flipped}
             onFlip={() => setFlipped(true)}
             onResult={recordResult}
           />
-        ) : (
+        )}
+        {currentCard && currentCard.type === 'cloze' && (
           <ClozeExercise
             card={currentCard}
             selectedAnswer={selectedAnswer}
@@ -257,6 +261,16 @@ export default function ReviewView() {
               recordResult(correct)
             }}
           />
+        )}
+
+        {/* Next button — visible after answering */}
+        {answered && (
+          <button
+            onClick={advanceToNext}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brown py-3.5 text-sm font-medium text-cream transition-all active:scale-[0.98]"
+          >
+            <ArrowRight className="h-5 w-5" />
+          </button>
         )}
       </div>
     </div>
@@ -364,6 +378,14 @@ function ClozeExercise({
   onSelect: (answer: string) => void
 }) {
   const { group, exercise } = card
+
+  // Shuffle options: correct answer + distractors (must be before early return — hooks can't be conditional)
+  const options = useMemo(() => {
+    if (!exercise) return []
+    const opts = [group.lemma, ...exercise.distractors.slice(0, 3)]
+    return opts.sort(() => Math.random() - 0.5)
+  }, [group.lemma, exercise])
+
   if (!exercise) return null
 
   // Build the sentence with a blank
@@ -371,12 +393,6 @@ function ClozeExercise({
     new RegExp(`\\b${group.lemma}\\b`, 'i'),
     '______'
   )
-
-  // Shuffle options: correct answer + distractors
-  const options = useMemo(() => {
-    const opts = [group.lemma, ...exercise.distractors.slice(0, 3)]
-    return opts.sort(() => Math.random() - 0.5)
-  }, [group.lemma, exercise.distractors])
 
   return (
     <div className="flex flex-1 flex-col">

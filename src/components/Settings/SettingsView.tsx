@@ -64,7 +64,7 @@ export default function SettingsView() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="px-5 pt-[calc(env(safe-area-inset-top,16px)+5px)]">
+      <div className="px-5 pt-[calc(env(safe-area-inset-top,16px)+16px)]">
         <h1 className="mb-4 text-2xl font-bold text-brown">Settings</h1>
       </div>
 
