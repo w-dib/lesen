@@ -144,9 +144,12 @@ export default function ReaderView() {
     const now = new Date()
     const newWords = [...(wordMap?.values() ?? [])].filter(w => w.level === 'new')
     const lemmas = [...new Set(newWords.map(w => w.lemma))]
-    for (const lemma of lemmas) {
-      await db.words.where('lemma').equals(lemma).modify({ level, updatedAt: now })
-    }
+    await db.transaction('rw', db.words, async () => {
+      await db.words
+        .where('lemma')
+        .anyOf(lemmas)
+        .modify({ level, updatedAt: now })
+    })
   }
 
   function goNextPage() {
