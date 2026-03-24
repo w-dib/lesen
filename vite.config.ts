@@ -85,7 +85,7 @@ Respond in JSON format only, no markdown:
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function callDeepSeek(apiKey: string, prompt: string, maxTokens: number): Promise<any> {
+async function callDeepSeek(apiKey: string, prompt: string, maxTokens: number): Promise<Record<string, any>> {
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
@@ -99,7 +99,7 @@ async function callDeepSeek(apiKey: string, prompt: string, maxTokens: number): 
       max_tokens: maxTokens,
     }),
   })
-  return response.json()
+  return response.json() as Promise<Record<string, any>>
 }
 
 export default defineConfig({

@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { useBook } from '@/hooks/useBooks'
 import { useChapters } from '@/hooks/useChapters'
 import { useBookWordStats } from '@/hooks/useWords'
-import { db, type Word } from '@/db/database'
+import { db } from '@/db/database'
+import type { Word } from '@/db/database'
 import { extractUniqueWords } from '@/services/textProcessor'
 
 function generateColor(title: string): string {

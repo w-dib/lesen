@@ -180,39 +180,19 @@ export default function ReaderView() {
 
   return (
     <div className="flex flex-1 flex-col bg-cream">
-      {/* Top toolbar */}
-      <div className="sticky top-0 z-40 flex items-center justify-between border-b border-brown-muted/10 bg-cream/95 px-2 py-2 backdrop-blur-sm">
-        <Button variant="ghost" size="icon" onClick={() => navigate(`/book/${bId}`)}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="flex flex-col items-center">
-          <p className="text-sm font-medium text-brown truncate max-w-[50vw]">{chapter.title}</p>
-          {totalPages > 1 && (
-            <p className="text-[10px] text-brown-muted">Page {page + 1} of {totalPages}</p>
-          )}
-        </div>
-        <div className="flex items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={!prevChapter}
-            onClick={() => prevChapter && navigate(`/book/${bId}/chapter/${prevChapter.id}`)}
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            disabled={!nextChapter}
-            onClick={() => nextChapter && navigate(`/book/${bId}/chapter/${nextChapter.id}`)}
-          >
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-        </div>
-      </div>
-
       {/* Reading area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-6">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 pb-20 pt-4">
+        {/* Inline header — scrolls with content */}
+        <div className="mb-4 flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/book/${bId}`)}
+            className="rounded-lg p-1.5 text-brown-muted hover:bg-cream-dark hover:text-brown"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+          <p className="text-sm font-medium text-brown truncate">{chapter.title}</p>
+        </div>
+
         <div className="leading-[2] text-brown" style={{ fontSize: `${getReaderFontSize()}px` }}>
           {pageTokens.map((token, i) => {
             const globalIdx = pageRange.start + i
@@ -240,28 +220,27 @@ export default function ReaderView() {
             </Button>
           </div>
         )}
+      </div>
 
-        {/* Page / chapter nav at bottom */}
-        <div className="mt-6 flex justify-between pb-8">
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={page === 0 && !prevChapter}
-            onClick={goPrevPage}
-          >
-            <ChevronLeft className="h-4 w-4" />
-            {page > 0 ? 'Previous page' : 'Previous'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={page === totalPages - 1 && !nextChapter}
-            onClick={goNextPage}
-          >
-            {page < totalPages - 1 ? 'Next page' : 'Next chapter'}
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+      {/* Sticky bottom page nav */}
+      <div className="sticky bottom-0 z-40 flex items-center justify-between border-t border-brown-muted/10 bg-cream/95 px-3 py-2 backdrop-blur-sm">
+        <button
+          disabled={page === 0 && !prevChapter}
+          onClick={goPrevPage}
+          className="rounded-lg p-2 text-brown-muted transition-colors hover:bg-cream-dark hover:text-brown disabled:opacity-30"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <span className="text-xs text-brown-muted">
+          {totalPages > 1 ? `${page + 1} / ${totalPages}` : chapter.title}
+        </span>
+        <button
+          disabled={page === totalPages - 1 && !nextChapter}
+          onClick={goNextPage}
+          className="rounded-lg p-2 text-brown-muted transition-colors hover:bg-cream-dark hover:text-brown disabled:opacity-30"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </button>
       </div>
 
       {/* Word bottom sheet */}
