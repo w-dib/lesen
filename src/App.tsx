@@ -9,6 +9,7 @@ import BookDetailView from '@/components/BookDetail/BookDetailView'
 import ReaderView from '@/components/Reader/ReaderView'
 import ReviewView from '@/components/Review/ReviewView'
 import { initLemmatizer } from '@/services/lemmatizer'
+import UpdatePrompt from '@/components/UpdatePrompt'
 
 export default function App() {
   const [ready, setReady] = useState(false)
@@ -56,6 +57,7 @@ export default function App() {
           </Routes>
         </main>
         <BottomTabs />
+        <UpdatePrompt />
       </div>
     </BrowserRouter>
   )

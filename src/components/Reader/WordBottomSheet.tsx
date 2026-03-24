@@ -1,10 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Sheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, Loader2, MessageSquareQuote } from 'lucide-react'
+import { ExternalLink, Loader2, MessageSquareQuote, Volume2 } from 'lucide-react'
 import { db, type Word, type Language } from '@/db/database'
 import { translateWord, translateSentence, getDictUrl, hasApiKey } from '@/services/dictionary'
 import { cn } from '@/lib/utils'
+
+const LANG_BCP47: Record<Language, string> = { de: 'de-DE', af: 'af-ZA', ru: 'ru-RU' }
+
+function speak(text: string, lang: Language) {
+  speechSynthesis.cancel()
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.lang = LANG_BCP47[lang]
+  utterance.rate = 0.85
+  speechSynthesis.speak(utterance)
+}
 
 type Level = Word['level']
 
@@ -90,7 +100,15 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
 
         {/* Word + lemma */}
         <div className="mb-4">
-          <p className="font-serif text-2xl font-bold text-brown">{word.text}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-serif text-2xl font-bold text-brown">{word.text}</p>
+            <button
+              onClick={() => speak(word.text, language)}
+              className="rounded-full p-1.5 text-brown-muted transition-colors hover:bg-cream-dark hover:text-brown"
+            >
+              <Volume2 className="h-5 w-5" />
+            </button>
+          </div>
           {word.lemma !== word.text && (
             <p className="mt-0.5 text-sm text-brown-muted">
               {word.text} <span className="mx-1">&rarr;</span>

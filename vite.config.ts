@@ -107,7 +107,7 @@ export default defineConfig({
     tailwindcss(),
     deepseekProxy(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
       includeAssets: [
         'favicon.ico',
         'icons/favicon-32x32.png',
