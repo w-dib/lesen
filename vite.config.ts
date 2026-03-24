@@ -84,7 +84,8 @@ Respond in JSON format only, no markdown:
   }
 }
 
-async function callDeepSeek(apiKey: string, prompt: string, maxTokens: number) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function callDeepSeek(apiKey: string, prompt: string, maxTokens: number): Promise<any> {
   const response = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
