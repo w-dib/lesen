@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { useBook } from '@/hooks/useBooks'
 import { useChapters } from '@/hooks/useChapters'
 import { useBookWordStats } from '@/hooks/useWords'
-import { db } from '@/db/database'
+import { db, type Word } from '@/db/database'
 import { extractUniqueWords } from '@/services/textProcessor'
 
 function generateColor(title: string): string {
@@ -25,14 +25,35 @@ export default function BookDetailView() {
   const stats = useBookWordStats(id)
 
   // Per-chapter: count of "new" words (0 means chapter is "complete")
+  // Single batch query for all chapters to avoid N+1 DB queries
   const chapterNewCounts = useLiveQuery(async () => {
     if (!chapters?.length) return new Map<number, number>()
+
+    // Collect all unique words across all chapters, with per-chapter sets
+    const chapterWordSets = new Map<number, Set<string>>()
+    const allWords = new Set<string>()
+    for (const ch of chapters) {
+      const words = extractUniqueWords(ch.content)
+      const wordSet = new Set(words)
+      chapterWordSets.set(ch.id!, wordSet)
+      for (const w of words) allWords.add(w)
+    }
+
+    // Single DB query for all words
+    const wordRecords = await db.words.where('text').anyOf([...allWords]).toArray()
+    const wordLevelMap = new Map<string, Word['level']>()
+    for (const w of wordRecords) wordLevelMap.set(w.text, w.level)
+
+    // Count "new" words per chapter
     const counts = new Map<number, number>()
     for (const ch of chapters) {
-      const uniqueWords = extractUniqueWords(ch.content)
-      const wordRecords = await db.words.where('text').anyOf(uniqueWords).toArray()
-      const newCount = wordRecords.filter(w => w.level === 'new').length
-      counts.set(ch.id, newCount)
+      const wordSet = chapterWordSets.get(ch.id!)!
+      let newCount = 0
+      for (const word of wordSet) {
+        const level = wordLevelMap.get(word)
+        if (level === 'new' || level === undefined) newCount++
+      }
+      counts.set(ch.id!, newCount)
     }
     return counts
   }, [chapters])

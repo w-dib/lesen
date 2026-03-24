@@ -10,6 +10,7 @@ export interface Book {
   lastOpenedAt: Date
   lastChapterId?: number
   scrollPosition?: number
+  lastPage?: number
 }
 
 export interface Chapter {
