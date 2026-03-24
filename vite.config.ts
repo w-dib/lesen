@@ -1,13 +1,96 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+import type { Plugin } from 'vite'
+
+function deepseekProxy(): Plugin {
+  let apiKey: string | undefined
+  return {
+    name: 'deepseek-proxy',
+    configResolved(config) {
+      const env = loadEnv(config.mode, config.root, '')
+      apiKey = env.DEEPSEEK_API_KEY
+    },
+    configureServer(server) {
+      server.middlewares.use('/api/review', async (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405)
+          res.end(JSON.stringify({ error: 'Method not allowed' }))
+          return
+        }
+
+        if (!apiKey) {
+          res.writeHead(500)
+          res.end(JSON.stringify({ error: 'DEEPSEEK_API_KEY not set' }))
+          return
+        }
+
+        const chunks: Buffer[] = []
+        req.on('data', (chunk: Buffer) => chunks.push(chunk))
+        req.on('end', async () => {
+          try {
+            const body = JSON.parse(Buffer.concat(chunks).toString())
+            const { words } = body as { words: { lemma: string; translation?: string }[] }
+
+            const wordList = words.map((w: { lemma: string; translation?: string }) =>
+              `${w.lemma}${w.translation ? ` (${w.translation})` : ''}`
+            ).join(', ')
+
+            const prompt = `You are a German language tutor. Generate review exercises for these German words: ${wordList}
+
+For each word, create:
+1. A natural German sentence using that word (B1 level, 8-15 words)
+2. The English translation of that sentence
+3. Three distractor words that could plausibly fill the blank (same part of speech, similar difficulty)
+
+Respond in JSON format only, no markdown:
+[
+  {
+    "lemma": "the word",
+    "sentence": "full German sentence with the word",
+    "translation": "English translation of the sentence",
+    "distractors": ["word1", "word2", "word3"]
+  }
+]`
+
+            const response = await fetch('https://api.deepseek.com/chat/completions', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: 'deepseek-chat',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.7,
+                max_tokens: 2000,
+              }),
+            })
+
+            const data = await response.json()
+            const content = data.choices?.[0]?.message?.content || '[]'
+            const jsonStr = content.replace(/```json?\n?/g, '').replace(/```/g, '').trim()
+            const exercises = JSON.parse(jsonStr)
+
+            res.writeHead(200, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ exercises }))
+          } catch (err) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Failed to generate exercises' }))
+          }
+        })
+      })
+    },
+  }
+}
 
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    deepseekProxy(),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: [

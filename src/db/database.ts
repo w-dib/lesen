@@ -31,6 +31,8 @@ export interface Word {
   bookIds: number[]
   lookupCount: number
   lastLookedUp?: Date
+  reviewStreak: number
+  lastReviewedAt?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -45,6 +47,16 @@ db.version(1).stores({
   books: '++id, title, lastOpenedAt',
   chapters: '++id, bookId, orderIndex',
   words: '++id, &text, lemma, level, *bookIds',
+})
+
+db.version(2).stores({
+  books: '++id, title, lastOpenedAt',
+  chapters: '++id, bookId, orderIndex',
+  words: '++id, &text, lemma, level, *bookIds',
+}).upgrade(tx => {
+  return tx.table('words').toCollection().modify(word => {
+    if (word.reviewStreak === undefined) word.reviewStreak = 0
+  })
 })
 
 export { db }

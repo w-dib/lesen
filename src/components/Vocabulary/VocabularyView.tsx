@@ -1,8 +1,10 @@
 import { useState, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { Search, Languages } from 'lucide-react'
+import { Search, Languages, Sparkles } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
 import { db, type Word } from '@/db/database'
 import { cn } from '@/lib/utils'
 import WordEditSheet from './WordEditSheet'
@@ -33,6 +35,7 @@ interface LemmaGroup {
 }
 
 export default function VocabularyView() {
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [selectedGroup, setSelectedGroup] = useState<LemmaGroup | null>(null)
@@ -126,7 +129,15 @@ export default function VocabularyView() {
     <div className="flex flex-1 flex-col">
       {/* Header */}
       <div className="px-5 pb-2 pt-[calc(env(safe-area-inset-top,16px)+5px)]">
-        <h1 className="mb-3 text-2xl font-bold text-brown">Vocabulary</h1>
+        <div className="mb-3 flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-brown">Vocabulary</h1>
+          {counts.learning > 0 && (
+            <Button size="sm" onClick={() => navigate('/review')}>
+              <Sparkles className="h-4 w-4" />
+              Review ({counts.learning})
+            </Button>
+          )}
+        </div>
 
         {/* Search */}
         <div className="relative mb-3">

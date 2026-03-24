@@ -7,6 +7,7 @@ import VocabularyView from '@/components/Vocabulary/VocabularyView'
 import SettingsView from '@/components/Settings/SettingsView'
 import BookDetailView from '@/components/BookDetail/BookDetailView'
 import ReaderView from '@/components/Reader/ReaderView'
+import ReviewView from '@/components/Review/ReviewView'
 import { initLemmatizer } from '@/services/lemmatizer'
 
 export default function App() {
@@ -51,6 +52,7 @@ export default function App() {
             <Route path="/settings" element={<SettingsView />} />
             <Route path="/book/:bookId" element={<BookDetailView />} />
             <Route path="/book/:bookId/chapter/:chapterId" element={<ReaderView />} />
+            <Route path="/review" element={<ReviewView />} />
           </Routes>
         </main>
         <BottomTabs />

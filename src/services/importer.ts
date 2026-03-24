@@ -115,6 +115,7 @@ async function processWords(uniqueWords: string[], bookId: number): Promise<void
         level,
         bookIds: [bookId],
         lookupCount: 0,
+        reviewStreak: 0,
         createdAt: now,
         updatedAt: now,
       } as Word)
