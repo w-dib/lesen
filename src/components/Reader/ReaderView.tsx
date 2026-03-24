@@ -17,6 +17,7 @@ export default function ReaderView() {
   const bId = Number(bookId)
   const cId = Number(chapterId)
 
+  const book = useLiveQuery(() => db.books.get(bId), [bId])
   const chapter = useLiveQuery(() => db.chapters.get(cId), [cId])
   const chapters = useLiveQuery(
     () => db.chapters.where('bookId').equals(bId).sortBy('orderIndex'),
@@ -266,6 +267,7 @@ export default function ReaderView() {
         onClose={handleCloseSheet}
         word={selectedWord}
         sentence={selectedSentence}
+        language={book?.language}
       />
     </div>
   )

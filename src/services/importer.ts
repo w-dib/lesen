@@ -1,5 +1,5 @@
-import { db, type Book, type Chapter, type Word } from '@/db/database'
-import { getLemma } from '@/services/lemmatizer'
+import { db, type Book, type Chapter, type Word, type Language } from '@/db/database'
+import { getLemma, initLemmatizer } from '@/services/lemmatizer'
 import { extractUniqueWords, countWords, isNumber } from '@/services/textProcessor'
 
 function getDefaultChapterSize(): number {
@@ -10,13 +10,17 @@ interface ImportOptions {
   title: string
   text: string
   coverUrl?: string
+  language?: Language
   chapterSize?: number
   /** Pre-split chapters (e.g. from EPUB). If provided, text splitting is skipped. */
   preChapters?: { title: string; content: string }[]
 }
 
 export async function importBook(options: ImportOptions): Promise<number> {
-  const { title, text, coverUrl, chapterSize = getDefaultChapterSize(), preChapters } = options
+  const { title, text, coverUrl, language = 'de', chapterSize = getDefaultChapterSize(), preChapters } = options
+
+  // Ensure lemmatizer is loaded for this language
+  await initLemmatizer(language)
 
   const chapters = preChapters
     ? preChapters.map(c => ({ title: c.title, content: c.content }))
@@ -33,6 +37,7 @@ export async function importBook(options: ImportOptions): Promise<number> {
   const bookId = await db.books.add({
     title,
     coverUrl,
+    language,
     totalWords: totalWordCount,
     uniqueWords: allUniqueWords.length,
     createdAt: new Date(),
@@ -51,7 +56,7 @@ export async function importBook(options: ImportOptions): Promise<number> {
   await db.chapters.bulkAdd(chapterRecords as Chapter[])
 
   // Create/update word records
-  await processWords(allUniqueWords, bookId as number)
+  await processWords(allUniqueWords, bookId as number, language)
 
   return bookId as number
 }
@@ -81,7 +86,7 @@ function splitIntoChapters(text: string, maxSize: number): string[] {
   return chapters
 }
 
-async function processWords(uniqueWords: string[], bookId: number): Promise<void> {
+async function processWords(uniqueWords: string[], bookId: number, language: Language = 'de'): Promise<void> {
   const now = new Date()
 
   // Batch lookup existing words
@@ -106,7 +111,7 @@ async function processWords(uniqueWords: string[], bookId: number): Promise<void
         })
       }
     } else {
-      const lemma = getLemma(wordText)
+      const lemma = getLemma(wordText, language)
       const level = isNumber(wordText) ? 'ignored' as const : 'new' as const
 
       toAdd.push({

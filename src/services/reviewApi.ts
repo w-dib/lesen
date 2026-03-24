@@ -6,12 +6,13 @@ export interface ReviewExercise {
 }
 
 export async function fetchReviewExercises(
-  words: { lemma: string; translation?: string }[]
+  words: { lemma: string; translation?: string }[],
+  language = 'German'
 ): Promise<ReviewExercise[]> {
   const res = await fetch('/api/review', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ words }),
+    body: JSON.stringify({ words, language }),
   })
 
   if (!res.ok) {

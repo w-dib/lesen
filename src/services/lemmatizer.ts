@@ -1,8 +1,10 @@
-let lemmaMap: Map<string, string> | null = null
-let loadingPromise: Promise<Map<string, string>> | null = null
+import type { Language } from '@/db/database'
 
-async function loadLemmaMap(): Promise<Map<string, string>> {
-  const response = await fetch('/lemma-de.tsv')
+const lemmaMaps = new Map<Language, Map<string, string>>()
+const loadingPromises = new Map<Language, Promise<Map<string, string>>>()
+
+async function loadLemmaMap(lang: Language): Promise<Map<string, string>> {
+  const response = await fetch(`/lemma-${lang}.tsv`)
   const text = await response.text()
   const map = new Map<string, string>()
 
@@ -20,20 +22,22 @@ async function loadLemmaMap(): Promise<Map<string, string>> {
   return map
 }
 
-export async function initLemmatizer(): Promise<void> {
-  if (lemmaMap) return
-  if (!loadingPromise) {
-    loadingPromise = loadLemmaMap()
+export async function initLemmatizer(lang: Language = 'de'): Promise<void> {
+  if (lemmaMaps.has(lang)) return
+  if (!loadingPromises.has(lang)) {
+    loadingPromises.set(lang, loadLemmaMap(lang))
   }
-  lemmaMap = await loadingPromise
+  const map = await loadingPromises.get(lang)!
+  lemmaMaps.set(lang, map)
 }
 
-export function getLemma(word: string): string {
-  if (!lemmaMap) return word.toLowerCase()
+export function getLemma(word: string, lang: Language = 'de'): string {
+  const map = lemmaMaps.get(lang)
+  if (!map) return word.toLowerCase()
   const lower = word.toLowerCase()
-  return lemmaMap.get(lower) ?? lower
+  return map.get(lower) ?? lower
 }
 
-export function isLemmatizerReady(): boolean {
-  return lemmaMap !== null
+export function isLemmatizerReady(lang: Language = 'de'): boolean {
+  return lemmaMaps.has(lang)
 }

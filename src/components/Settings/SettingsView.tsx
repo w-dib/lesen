@@ -2,9 +2,12 @@ import { useState, useRef, useEffect } from 'react'
 import { Download, Upload, Trash2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { exportAllData, importData, clearAllData } from '@/services/dataExport'
+import { LANGUAGES, type Language } from '@/db/database'
+import { cn } from '@/lib/utils'
 
 const CHAPTER_SIZE_KEY = 'lesen-chapter-size'
 const FONT_SIZE_KEY = 'lesen-font-size'
+const LANGUAGE_KEY = 'lesen-default-language'
 
 export function getChapterSize(): number {
   return Number(localStorage.getItem(CHAPTER_SIZE_KEY)) || 3000
@@ -14,12 +17,21 @@ export function getReaderFontSize(): number {
   return Number(localStorage.getItem(FONT_SIZE_KEY)) || 18
 }
 
+export function getDefaultLanguage(): Language {
+  return (localStorage.getItem(LANGUAGE_KEY) as Language) || 'de'
+}
+
 export default function SettingsView() {
+  const [language, setLanguage] = useState<Language>(getDefaultLanguage)
   const [chapterSize, setChapterSize] = useState(getChapterSize)
   const [fontSize, setFontSize] = useState(getReaderFontSize)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [importStatus, setImportStatus] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    localStorage.setItem(LANGUAGE_KEY, language)
+  }, [language])
 
   useEffect(() => {
     localStorage.setItem(CHAPTER_SIZE_KEY, String(chapterSize))
@@ -57,6 +69,26 @@ export default function SettingsView() {
       </div>
 
       <div className="flex flex-col gap-6 px-5 pb-8">
+        {/* Language */}
+        <SettingsSection title="I'm learning" description="Default language for new book imports">
+          <div className="flex gap-2">
+            {LANGUAGES.map(({ code, label, flag }) => (
+              <button
+                key={code}
+                onClick={() => setLanguage(code)}
+                className={cn(
+                  'flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                  language === code
+                    ? 'bg-brown text-cream'
+                    : 'bg-cream-dark text-brown-muted hover:text-brown'
+                )}
+              >
+                {flag} {label}
+              </button>
+            ))}
+          </div>
+        </SettingsSection>
+
         {/* Chapter size */}
         <SettingsSection title="Default chapter size" description="Characters per chapter when auto-splitting imported text">
           <div className="flex items-center gap-3">

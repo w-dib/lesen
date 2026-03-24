@@ -4,6 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BookOpen, Upload, ClipboardPaste, ImagePlus, Loader2 } from 'lucide-react'
 import { importBook, readFileAsText, resizeImage } from '@/services/importer'
+import { LANGUAGES, type Language } from '@/db/database'
+import { getDefaultLanguage } from '@/components/Settings/SettingsView'
+import { cn } from '@/lib/utils'
 
 interface ImportModalProps {
   open: boolean
@@ -25,6 +28,7 @@ export default function ImportModal({ open, onClose, onImported }: ImportModalPr
   const [parsing, setParsing] = useState(false)
   const [fileName, setFileName] = useState('')
   const [preChapters, setPreChapters] = useState<PreChapter[] | undefined>()
+  const [language, setLanguage] = useState<Language>(getDefaultLanguage)
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const coverRef = useRef<HTMLInputElement>(null)
@@ -38,6 +42,7 @@ export default function ImportModal({ open, onClose, onImported }: ImportModalPr
     setImporting(false)
     setParsing(false)
     setPreChapters(undefined)
+    setLanguage(getDefaultLanguage())
     setError(null)
   }
 
@@ -100,6 +105,7 @@ export default function ImportModal({ open, onClose, onImported }: ImportModalPr
         title: title.trim(),
         text,
         coverUrl,
+        language,
         preChapters,
       })
       handleClose()
@@ -124,6 +130,27 @@ export default function ImportModal({ open, onClose, onImported }: ImportModalPr
             value={title}
             onChange={e => setTitle(e.target.value)}
           />
+        </div>
+
+        {/* Language */}
+        <div>
+          <label className="mb-1.5 block text-sm font-medium text-brown">Language</label>
+          <div className="flex gap-1.5">
+            {LANGUAGES.map(({ code, label, flag }) => (
+              <button
+                key={code}
+                onClick={() => setLanguage(code)}
+                className={cn(
+                  'rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                  language === code
+                    ? 'bg-brown text-cream'
+                    : 'bg-cream-dark text-brown-muted hover:text-brown'
+                )}
+              >
+                {flag} {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Cover image */}

@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { Sheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { ExternalLink, Loader2, MessageSquareQuote } from 'lucide-react'
-import { db, type Word } from '@/db/database'
-import { translateWord, translateSentence, getDictCcUrl, hasApiKey } from '@/services/dictionary'
+import { db, type Word, type Language } from '@/db/database'
+import { translateWord, translateSentence, getDictUrl, hasApiKey } from '@/services/dictionary'
 import { cn } from '@/lib/utils'
 
 type Level = Word['level']
@@ -20,9 +20,10 @@ interface WordBottomSheetProps {
   onClose: () => void
   word?: Word
   sentence?: string
+  language?: Language
 }
 
-export default function WordBottomSheet({ open, onClose, word, sentence }: WordBottomSheetProps) {
+export default function WordBottomSheet({ open, onClose, word, sentence, language = 'de' }: WordBottomSheetProps) {
   const [translation, setTranslation] = useState<string | null>(null)
   const [translating, setTranslating] = useState(false)
   const [sentenceTranslation, setSentenceTranslation] = useState<string | null>(null)
@@ -43,7 +44,7 @@ export default function WordBottomSheet({ open, onClose, word, sentence }: WordB
 
     // Fetch from DeepL
     setTranslating(true)
-    translateWord(word.text).then(result => {
+    translateWord(word.text, language).then(result => {
       setTranslation(result)
       setTranslating(false)
     })
@@ -52,7 +53,7 @@ export default function WordBottomSheet({ open, onClose, word, sentence }: WordB
   const handleTranslateSentence = useCallback(async () => {
     if (!sentence) return
     setTranslatingSentence(true)
-    const result = await translateSentence(sentence)
+    const result = await translateSentence(sentence, language)
     setSentenceTranslation(result)
     setTranslatingSentence(false)
   }, [sentence])
@@ -112,14 +113,19 @@ export default function WordBottomSheet({ open, onClose, word, sentence }: WordB
               <p className="text-sm text-brown-muted">
                 {hasApiKey() ? 'No translation found' : 'No API key configured'}
               </p>
-              <a
-                href={getDictCcUrl(word.lemma)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-sm font-medium text-gold hover:underline"
-              >
-                Search on dict.cc <ExternalLink className="h-3.5 w-3.5" />
-              </a>
+              {(() => {
+                const { url, label } = getDictUrl(word.lemma, language)
+                return (
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-sm font-medium text-gold hover:underline"
+                  >
+                    Search on {label} <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )
+              })()}
             </div>
           )}
         </div>

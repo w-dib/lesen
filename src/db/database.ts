@@ -1,9 +1,18 @@
 import Dexie, { type EntityTable } from 'dexie'
 
+export type Language = 'de' | 'af' | 'ru'
+
+export const LANGUAGES: { code: Language; label: string; flag: string }[] = [
+  { code: 'de', label: 'German', flag: '🇩🇪' },
+  { code: 'af', label: 'Afrikaans', flag: '🇿🇦' },
+  { code: 'ru', label: 'Russian', flag: '🇷🇺' },
+]
+
 export interface Book {
   id: number
   title: string
   coverUrl?: string
+  language: Language
   totalWords: number
   uniqueWords: number
   createdAt: Date
@@ -56,6 +65,16 @@ db.version(2).stores({
 }).upgrade(tx => {
   return tx.table('words').toCollection().modify(word => {
     if (word.reviewStreak === undefined) word.reviewStreak = 0
+  })
+})
+
+db.version(3).stores({
+  books: '++id, title, lastOpenedAt',
+  chapters: '++id, bookId, orderIndex',
+  words: '++id, &text, lemma, level, *bookIds',
+}).upgrade(tx => {
+  return tx.table('books').toCollection().modify(book => {
+    if (!book.language) book.language = 'de'
   })
 })
 
