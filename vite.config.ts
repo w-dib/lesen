@@ -33,6 +33,24 @@ function deepseekProxy(): Plugin {
           try {
             const body = JSON.parse(Buffer.concat(chunks).toString())
 
+            // Word lookup mode: lemma correction + translation
+            if (body.lookup) {
+              const { word, sentence, language } = body
+              const prompt = `You are a ${language} language expert. The user tapped the word "${word}" in this sentence: "${sentence}"
+
+Identify the correct full infinitive/dictionary form of this word in context (e.g. for German separable verbs like "rufe...an" → "anrufen"). Then translate it to English.
+
+Respond in JSON only, no markdown:
+{"lemma": "correct dictionary form", "translation": "English translation"}`
+              const data = await callDeepSeek(apiKey!, prompt, 100)
+              const content = data.choices?.[0]?.message?.content || '{}'
+              const jsonStr = content.replace(/```json?\n?/g, '').replace(/```/g, '').trim()
+              const result = JSON.parse(jsonStr)
+              res.writeHead(200, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify(result))
+              return
+            }
+
             // Translation mode
             if (body.translate) {
               const { text, language } = body

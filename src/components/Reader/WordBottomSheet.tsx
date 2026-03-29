@@ -3,7 +3,7 @@ import { Sheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { ExternalLink, Loader2, MessageSquareQuote, Volume2 } from 'lucide-react'
 import { db, type Word, type Language } from '@/db/database'
-import { translateWord, translateSentence, getDictUrl, hasApiKey } from '@/services/dictionary'
+import { lookupWord, translateSentence, getDictUrl } from '@/services/dictionary'
 import { cn } from '@/lib/utils'
 
 const LANG_BCP47: Record<Language, string> = { de: 'de-DE', af: 'af-ZA', ru: 'ru-RU' }
@@ -35,6 +35,7 @@ interface WordBottomSheetProps {
 
 export default function WordBottomSheet({ open, onClose, word, sentence, language = 'de' }: WordBottomSheetProps) {
   const [translation, setTranslation] = useState<string | null>(null)
+  const [correctedLemma, setCorrectedLemma] = useState<string | null>(null)
   const [translating, setTranslating] = useState(false)
   const [sentenceTranslation, setSentenceTranslation] = useState<string | null>(null)
   const [translatingSentence, setTranslatingSentence] = useState(false)
@@ -42,6 +43,7 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
   useEffect(() => {
     if (!open || !word) {
       setTranslation(null)
+      setCorrectedLemma(null)
       setSentenceTranslation(null)
       return
     }
@@ -52,13 +54,25 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
       return
     }
 
-    // Fetch from DeepL
+    // Smart lookup: send word + sentence to DeepSeek
     setTranslating(true)
-    translateWord(word.text, language).then(result => {
-      setTranslation(result)
+    lookupWord(word.text, sentence || word.text, language).then(result => {
+      if (result) {
+        setTranslation(result.translation)
+        // If DeepSeek corrected the lemma (e.g. "rufe" in context → "anrufen")
+        if (result.lemma.toLowerCase() !== word.lemma.toLowerCase()) {
+          setCorrectedLemma(result.lemma.toLowerCase())
+        }
+        // Save translation to DB
+        db.words.update(word.id, { translation: result.translation })
+        // If lemma was corrected, update it
+        if (result.lemma.toLowerCase() !== word.lemma.toLowerCase()) {
+          db.words.update(word.id, { lemma: result.lemma.toLowerCase() })
+        }
+      }
       setTranslating(false)
     })
-  }, [open, word])
+  }, [open, word?.id])
 
   const handleTranslateSentence = useCallback(async () => {
     if (!sentence) return
@@ -66,18 +80,19 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
     const result = await translateSentence(sentence, language)
     setSentenceTranslation(result)
     setTranslatingSentence(false)
-  }, [sentence])
+  }, [sentence, language])
 
   const handleLevelChange = useCallback(async (newLevel: Level) => {
     if (!word) return
     const now = new Date()
+    const lemma = correctedLemma || word.lemma
 
     // Update all words sharing the same lemma
     await db.words
       .where('lemma')
-      .equals(word.lemma)
+      .equals(lemma)
       .modify({ level: newLevel, updatedAt: now })
-  }, [word])
+  }, [word, correctedLemma])
 
   // Increment lookup count on open
   useEffect(() => {
@@ -89,6 +104,8 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
   }, [open, word?.id])
 
   if (!word) return null
+
+  const displayLemma = correctedLemma || word.lemma
 
   return (
     <Sheet open={open} onClose={onClose}>
@@ -109,10 +126,10 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
               <Volume2 className="h-5 w-5" />
             </button>
           </div>
-          {word.lemma !== word.text && (
+          {displayLemma !== word.text.toLowerCase() && (
             <p className="mt-0.5 text-sm text-brown-muted">
               {word.text} <span className="mx-1">&rarr;</span>
-              <span className="font-medium text-brown">{word.lemma}</span>
+              <span className="font-medium text-brown">{displayLemma}</span>
             </p>
           )}
         </div>
@@ -128,11 +145,9 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
             <p className="text-sm text-brown">{translation}</p>
           ) : (
             <div className="flex flex-col gap-2">
-              <p className="text-sm text-brown-muted">
-                {hasApiKey() ? 'No translation found' : 'No API key configured'}
-              </p>
+              <p className="text-sm text-brown-muted">No translation found</p>
               {(() => {
-                const { url, label } = getDictUrl(word.lemma, language)
+                const { url, label } = getDictUrl(displayLemma, language)
                 return (
                   <a
                     href={url}

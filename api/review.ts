@@ -13,7 +13,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const body = req.body
 
-    // Translation mode (for languages DeepL doesn't support)
+    // Word lookup mode: lemma correction + translation in one call
+    if (body.lookup) {
+      const { word, sentence, language } = body as { word: string; sentence: string; language: string }
+      const prompt = `You are a ${language} language expert. The user tapped the word "${word}" in this sentence: "${sentence}"
+
+Identify the correct full infinitive/dictionary form of this word in context (e.g. for German separable verbs like "rufe...an" → "anrufen"). Then translate it to English.
+
+Respond in JSON only, no markdown:
+{"lemma": "correct dictionary form", "translation": "English translation"}`
+
+      const response = await callDeepSeek(apiKey, prompt, 100)
+      if (!response.ok) {
+        return res.status(response.status).json({ error: await response.text() })
+      }
+
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content || '{}'
+      const jsonStr = content.replace(/```json?\n?/g, '').replace(/```/g, '').trim()
+      const result = JSON.parse(jsonStr)
+      return res.status(200).json(result)
+    }
+
+    // Translation mode
     if (body.translate) {
       const { text, language } = body as { text: string; language: string }
       const prompt = `Translate the following ${language} text to English. Reply with ONLY the translation, nothing else:\n\n${text}`
