@@ -18,7 +18,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const { word, sentence, language } = body as { word: string; sentence: string; language: string }
       const prompt = `You are a ${language} language expert. The user tapped the word "${word}" in this sentence: "${sentence}"
 
-Identify the correct full infinitive/dictionary form of this word in context (e.g. for German separable verbs like "rufe...an" → "anrufen"). Then translate it to English.
+Your task: identify the correct full infinitive/dictionary form of this word in context, then translate it to English.
+
+CRITICAL for German: Always check for separable verbs. Look at the END of the sentence or clause for a separable prefix (an, auf, aus, ab, bei, ein, mit, nach, vor, zu, hin, her, weg, zurück, fest, los, weiter, um, durch, über, unter). If one exists and combines with the tapped verb to form a separable verb, return the combined infinitive.
+Examples: "rufe...an" → "anrufen", "fängt...an" → "anfangen", "steht...auf" → "aufstehen", "kommt...mit" → "mitkommen", "hört...zu" → "zuhören"
 
 Respond in JSON only, no markdown:
 {"lemma": "correct dictionary form", "translation": "English translation"}`
