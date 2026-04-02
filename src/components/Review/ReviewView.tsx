@@ -388,8 +388,8 @@ function ClozeExercise({
 
   if (!exercise) return null
 
-  // Build the sentence with a blank
-  const blankSentence = exercise.sentence.replace(
+  // Use pre-blanked sentence from API, with regex fallback
+  const blankSentence = exercise.blanked || exercise.sentence.replace(
     new RegExp(`\\b${group.lemma}\\b`, 'i'),
     '______'
   )

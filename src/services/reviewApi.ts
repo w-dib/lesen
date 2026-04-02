@@ -1,6 +1,7 @@
 export interface ReviewExercise {
   lemma: string
   sentence: string
+  blanked: string
   translation: string
   distractors: string[]
 }

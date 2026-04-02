@@ -71,16 +71,18 @@ Respond in JSON only, no markdown:
             const prompt = `You are a ${language} language tutor. Generate review exercises for these ${language} words: ${wordList}
 
 For each word, create:
-1. A natural ${language} sentence using that word (B1 level, 8-15 words)
-2. The English translation of that sentence
-3. Three distractor words that could plausibly fill the blank (same part of speech, similar difficulty)
+1. A natural ${language} sentence using the EXACT lemma form of the word (B1 level, 8-15 words). The sentence MUST contain the exact lemma as given above.
+2. The same sentence but with the target word replaced by "______" (six underscores). IMPORTANT: double-check the word is actually removed and not still visible.
+3. The English translation of the sentence.
+4. Three distractor words: same part of speech and difficulty, but SEMANTICALLY UNRELATED. Do NOT use synonyms, antonyms, or words from the same topic. Example: if the answer is "schnell", do NOT use "langsam" or "beeilen" — use unrelated words like "wichtig", "freundlich", "müde".
 
 Respond in JSON format only, no markdown:
 [
   {
     "lemma": "the word",
-    "sentence": "full ${language} sentence with the word",
-    "translation": "English translation of the sentence",
+    "sentence": "full sentence with the exact lemma",
+    "blanked": "same sentence with ______ replacing the word",
+    "translation": "English translation",
     "distractors": ["word1", "word2", "word3"]
   }
 ]`
