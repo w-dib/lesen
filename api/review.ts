@@ -20,8 +20,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
 Your task: identify the correct full infinitive/dictionary form of this word in context, then translate it to English.
 
-CRITICAL for German: Always check for separable verbs. Look at the END of the sentence or clause for a separable prefix (an, auf, aus, ab, bei, ein, mit, nach, vor, zu, hin, her, weg, zurück, fest, los, weiter, um, durch, über, unter). If one exists and combines with the tapped verb to form a separable verb, return the combined infinitive.
-Examples: "rufe...an" → "anrufen", "fängt...an" → "anfangen", "steht...auf" → "aufstehen", "kommt...mit" → "mitkommen", "hört...zu" → "zuhören"
+IMPORTANT: Return the dictionary form of EXACTLY the word "${word}" that was tapped, based on its role in the sentence. If "${word}" is a noun, return the noun. If it is an adjective, return the adjective. Do NOT merge it with other words in the sentence.
+
+For German ONLY: If and only if "${word}" is a CONJUGATED VERB FORM (not a noun, adjective, or other part of speech), check for separable verbs. Look at the END of the sentence or clause for a separable prefix (an, auf, aus, ab, bei, ein, mit, nach, vor, zu, hin, her, weg, zurück, fest, los, weiter, um, durch, über, unter). If one exists and combines with the tapped verb to form a separable verb, return the combined infinitive.
+Examples: "rufe...an" → "anrufen", "fängt...an" → "anfangen", "steht...auf" → "aufstehen"
+Counter-examples: "Burg" in a sentence ending with "an" → "Burg" (it's a noun, not a verb). "schnell" → "schnell" (adjective, not a verb).
 
 Respond in JSON only, no markdown:
 {"lemma": "correct dictionary form", "translation": "English translation"}`

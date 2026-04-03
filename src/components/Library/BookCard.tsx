@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BookOpen, FileText, Archive, Trash2 } from 'lucide-react'
+import { BookOpen, FileText, Archive, ArchiveRestore, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { db, type Book } from '@/db/database'
 
@@ -22,9 +22,9 @@ export default function BookCard({ book, knownPercent }: BookCardProps) {
   const [showActions, setShowActions] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  async function handleArchive(e: React.MouseEvent) {
+  async function handleArchiveToggle(e: React.MouseEvent) {
     e.stopPropagation()
-    await db.books.update(book.id, { archived: true })
+    await db.books.update(book.id, { archived: !book.archived })
     setShowActions(false)
   }
 
@@ -105,11 +105,14 @@ export default function BookCard({ book, knownPercent }: BookCardProps) {
           onClick={e => e.stopPropagation()}
         >
           <button
-            onClick={handleArchive}
+            onClick={handleArchiveToggle}
             className="flex items-center gap-1.5 rounded-lg bg-brown px-3 py-1.5 text-xs font-medium text-cream shadow-md"
           >
-            <Archive className="h-3.5 w-3.5" />
-            Archive
+            {book.archived ? (
+              <><ArchiveRestore className="h-3.5 w-3.5" /> Restore</>
+            ) : (
+              <><Archive className="h-3.5 w-3.5" /> Archive</>
+            )}
           </button>
           <button
             onClick={handleDelete}

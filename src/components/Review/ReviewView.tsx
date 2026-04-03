@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, RotateCcw, Check, X, Sparkles, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -67,12 +67,18 @@ export default function ReviewView() {
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null)
   const [clozeRevealed, setClozeRevealed] = useState(false)
 
-  // Build session when groups are ready
+  // Track whether session has been built to avoid re-triggering from live query updates
+  const sessionBuilt = useRef(false)
+
+  // Build session when groups are ready (only once)
   useEffect(() => {
+    if (sessionBuilt.current) return
     if (!groups.length) {
       setLoading(false)
       return
     }
+
+    sessionBuilt.current = true
 
     // Pick up to SESSION_SIZE words, shuffled
     const shuffled = [...groups].sort(() => Math.random() - 0.5)
@@ -192,6 +198,16 @@ export default function ReviewView() {
     setAnswered(false)
   }, [])
 
+  // Mark exercises as used when session ends
+  useEffect(() => {
+    if (isSessionDone && sessionCards.length > 0) {
+      const usedLemmas = sessionCards
+        .filter(c => c.type !== 'match')
+        .map(c => c.group.lemma)
+      markExercisesUsed(usedLemmas).then(() => preGenerateExercises())
+    }
+  }, [isSessionDone])
+
   // --- RENDER ---
 
   if (loading) {
@@ -223,16 +239,6 @@ export default function ReviewView() {
       </div>
     )
   }
-
-  // When session ends, mark exercises as used and pre-generate for next time
-  useEffect(() => {
-    if (isSessionDone && sessionCards.length > 0) {
-      const usedLemmas = sessionCards
-        .filter(c => c.type !== 'match')
-        .map(c => c.group.lemma)
-      markExercisesUsed(usedLemmas).then(() => preGenerateExercises())
-    }
-  }, [isSessionDone])
 
   if (isSessionDone) {
     const correctCount = results.filter(r => r === 'correct').length

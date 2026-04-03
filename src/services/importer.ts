@@ -130,13 +130,15 @@ async function processWords(uniqueWords: string[], bookId: number, language: Lan
     }
   }
 
-  if (toAdd.length > 0) {
-    await db.words.bulkAdd(toAdd as Word[])
-  }
+  await db.transaction('rw', db.words, async () => {
+    if (toAdd.length > 0) {
+      await db.words.bulkAdd(toAdd as Word[])
+    }
 
-  for (const { id, changes } of toUpdate) {
-    await db.words.update(id, changes)
-  }
+    if (toUpdate.length > 0) {
+      await Promise.all(toUpdate.map(({ id, changes }) => db.words.update(id, changes)))
+    }
+  })
 }
 
 export function readFileAsText(file: File): Promise<string> {
