@@ -26,6 +26,8 @@ For German ONLY: If and only if "${word}" is a CONJUGATED VERB FORM (not a noun,
 Examples: "rufe...an" → "anrufen", "fängt...an" → "anfangen", "steht...auf" → "aufstehen"
 Counter-examples: "Burg" in a sentence ending with "an" → "Burg" (it's a noun, not a verb). "schnell" → "schnell" (adjective, not a verb).
 
+Choose the English translation that best fits the word's meaning in THIS sentence context.
+
 Respond in JSON only, no markdown:
 {"lemma": "correct dictionary form", "translation": "English translation"}`
 

@@ -1,13 +1,28 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Sheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, Loader2, MessageSquareQuote, Volume2 } from 'lucide-react'
+import { ExternalLink, Loader2, MessageSquareQuote, RefreshCw, Volume2 } from 'lucide-react'
 import { db, type Word, type Language } from '@/db/database'
 import { lookupWord, translateSentence, getDictUrl } from '@/services/dictionary'
 import { preGenerateExercises } from '@/services/exerciseCache'
 import { cn } from '@/lib/utils'
 
 const LANG_BCP47: Record<Language, string> = { de: 'de-DE', af: 'af-ZA', ru: 'ru-RU' }
+
+/** Normalize a translation for dedup comparison */
+function normalizeTranslation(t: string): string {
+  return t.toLowerCase().replace(/^to\s+/, '').trim()
+}
+
+/** Merge a new translation into an existing ` · `-separated string. Returns the merged string. */
+function mergeTranslation(existing: string | undefined, newTranslation: string): string {
+  if (!existing) return newTranslation
+  const parts = existing.split(' · ').map(s => s.trim()).filter(Boolean)
+  const normalizedNew = normalizeTranslation(newTranslation)
+  const alreadyExists = parts.some(p => normalizeTranslation(p) === normalizedNew)
+  if (alreadyExists) return existing
+  return [...parts, newTranslation].join(' · ')
+}
 
 function speak(text: string, lang: Language) {
   speechSynthesis.cancel()
@@ -41,6 +56,18 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
   const [sentenceTranslation, setSentenceTranslation] = useState<string | null>(null)
   const [translatingSentence, setTranslatingSentence] = useState(false)
 
+  /** Process a lookup result: merge translation, update lemma if corrected */
+  const processLookupResult = useCallback((result: { lemma: string; translation: string }, w: Word) => {
+    const merged = mergeTranslation(w.translation, result.translation)
+    setTranslation(merged)
+    db.words.update(w.id, { translation: merged })
+
+    if (result.lemma.toLowerCase() !== w.lemma.toLowerCase()) {
+      setCorrectedLemma(result.lemma.toLowerCase())
+      db.words.update(w.id, { lemma: result.lemma.toLowerCase() })
+    }
+  }, [])
+
   useEffect(() => {
     if (!open || !word) {
       setTranslation(null)
@@ -58,22 +85,18 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
     // Smart lookup: send word + sentence to DeepSeek
     setTranslating(true)
     lookupWord(word.text, sentence || word.text, language).then(result => {
-      if (result) {
-        setTranslation(result.translation)
-        // If DeepSeek corrected the lemma (e.g. "rufe" in context → "anrufen")
-        if (result.lemma.toLowerCase() !== word.lemma.toLowerCase()) {
-          setCorrectedLemma(result.lemma.toLowerCase())
-        }
-        // Save translation to DB
-        db.words.update(word.id, { translation: result.translation })
-        // If lemma was corrected, update it
-        if (result.lemma.toLowerCase() !== word.lemma.toLowerCase()) {
-          db.words.update(word.id, { lemma: result.lemma.toLowerCase() })
-        }
-      }
+      if (result) processLookupResult(result, word)
       setTranslating(false)
     })
   }, [open, word?.id])
+
+  const handleRelookup = useCallback(async () => {
+    if (!word || !sentence) return
+    setTranslating(true)
+    const result = await lookupWord(word.text, sentence, language)
+    if (result) processLookupResult(result, word)
+    setTranslating(false)
+  }, [word, sentence, language, processLookupResult])
 
   const handleTranslateSentence = useCallback(async () => {
     if (!sentence) return
@@ -168,6 +191,21 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
             </div>
           )}
         </div>
+
+        {/* Re-lookup button — shown when translation exists and we have sentence context */}
+        {translation && !translating && sentence && (
+          <div className="mb-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={handleRelookup}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Re-lookup in this context
+            </Button>
+          </div>
+        )}
 
         {/* Translate sentence */}
         {sentence && (
