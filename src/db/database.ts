@@ -112,4 +112,20 @@ db.version(5).stores({
   exercises: '++id, &lemma, used',
 })
 
+db.version(6).stores({
+  books: '++id, title, lastOpenedAt',
+  chapters: '++id, bookId, orderIndex',
+  words: '++id, &text, lemma, level, *bookIds',
+  exercises: '++id, &lemma, used',
+}).upgrade(async tx => {
+  // Clean up stale bookIds referencing deleted books
+  const bookIds = new Set((await tx.table('books').toArray()).map((b: Book) => b.id))
+  await tx.table('words').toCollection().modify((word: Word) => {
+    const cleaned = word.bookIds.filter(id => bookIds.has(id))
+    if (cleaned.length !== word.bookIds.length) {
+      word.bookIds = cleaned
+    }
+  })
+})
+
 export { db }

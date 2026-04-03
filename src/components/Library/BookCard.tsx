@@ -34,9 +34,18 @@ export default function BookCard({ book, knownPercent }: BookCardProps) {
       setConfirmDelete(true)
       return
     }
-    // Delete book and its chapters, but keep words
-    await db.chapters.where('bookId').equals(book.id).delete()
-    await db.books.delete(book.id)
+    // Delete book, chapters, and clean up bookIds from words
+    await db.transaction('rw', [db.books, db.chapters, db.words], async () => {
+      await db.chapters.where('bookId').equals(book.id).delete()
+      await db.books.delete(book.id)
+      // Remove this bookId from all words that reference it
+      const words = await db.words.where('bookIds').equals(book.id).toArray()
+      await Promise.all(words.map(w =>
+        db.words.update(w.id, {
+          bookIds: w.bookIds.filter(id => id !== book.id),
+        })
+      ))
+    })
     setShowActions(false)
   }
 
