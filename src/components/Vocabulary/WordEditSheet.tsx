@@ -2,9 +2,11 @@ import { useState, useCallback } from 'react'
 import { Sheet } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Wand2, Loader2 } from 'lucide-react'
+import { Wand2, Loader2, Unlink } from 'lucide-react'
 import { db, type Word } from '@/db/database'
 import { translateWord } from '@/services/dictionary'
+import { getLemma, initLemmatizer } from '@/services/lemmatizer'
+import { getDefaultLanguage } from '@/components/Settings/SettingsView'
 import { cn } from '@/lib/utils'
 
 type Level = Word['level']
@@ -73,14 +75,37 @@ export default function WordEditSheet({ open, onClose, group }: WordEditSheetPro
         <div>
           <p className="mb-1.5 text-xs font-medium text-brown-muted">Inflected forms encountered</p>
           <div className="flex flex-wrap gap-1.5">
-            {group.forms.map(f => (
-              <span
-                key={f.id}
-                className="rounded-md bg-cream-dark px-2 py-1 text-xs text-brown"
-              >
-                {f.text}
-              </span>
-            ))}
+            {group.forms.map(f => {
+              const correctLemma = getLemma(f.text, getDefaultLanguage()) || f.text.toLowerCase()
+              const isMisGrouped = correctLemma !== group.lemma && f.text.toLowerCase() !== group.lemma
+              return (
+                <span
+                  key={f.id}
+                  className={cn(
+                    'flex items-center gap-1 rounded-md px-2 py-1 text-xs',
+                    isMisGrouped ? 'bg-red-50 text-red-700 border border-red-200' : 'bg-cream-dark text-brown'
+                  )}
+                >
+                  {f.text}
+                  {isMisGrouped && (
+                    <button
+                      title={`Detach — move to "${correctLemma}"`}
+                      onClick={async () => {
+                        await initLemmatizer(getDefaultLanguage())
+                        await db.words.update(f.id, {
+                          lemma: correctLemma,
+                          translation: undefined,
+                          updatedAt: new Date(),
+                        })
+                      }}
+                      className="ml-0.5 rounded p-0.5 hover:bg-red-100"
+                    >
+                      <Unlink className="h-3 w-3" />
+                    </button>
+                  )}
+                </span>
+              )
+            })}
           </div>
         </div>
 
