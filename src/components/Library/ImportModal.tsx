@@ -106,6 +106,7 @@ export default function ImportModal({ open, onClose, onImported }: ImportModalPr
         text,
         coverUrl,
         language,
+        type: mode === 'paste' ? 'text' : 'book',
         preChapters,
       })
       handleClose()
@@ -120,7 +121,7 @@ export default function ImportModal({ open, onClose, onImported }: ImportModalPr
   const canImport = title.trim().length > 0 && text.trim().length > 0 && !parsing
 
   return (
-    <Sheet open={open} onClose={handleClose} title="Import Book">
+    <Sheet open={open} onClose={handleClose} title={mode === 'paste' ? 'Add Text' : 'Import Book'}>
       <div className="flex flex-col gap-5 p-5">
         {/* Title */}
         <div>
@@ -281,10 +282,10 @@ export default function ImportModal({ open, onClose, onImported }: ImportModalPr
           {importing ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Importing...
+              {mode === 'paste' ? 'Saving...' : 'Importing...'}
             </>
           ) : (
-            'Import Book'
+            mode === 'paste' ? 'Save Text' : 'Import Book'
           )}
         </Button>
       </div>

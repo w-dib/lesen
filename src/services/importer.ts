@@ -1,4 +1,4 @@
-import { db, type Book, type Chapter, type Word, type Language } from '@/db/database'
+import { db, type Book, type BookType, type Chapter, type Word, type Language } from '@/db/database'
 import { getLemma, initLemmatizer } from '@/services/lemmatizer'
 import { extractUniqueWords, countWords, isNumber } from '@/services/textProcessor'
 
@@ -11,13 +11,14 @@ interface ImportOptions {
   text: string
   coverUrl?: string
   language?: Language
+  type?: BookType
   chapterSize?: number
   /** Pre-split chapters (e.g. from EPUB). If provided, text splitting is skipped. */
   preChapters?: { title: string; content: string }[]
 }
 
 export async function importBook(options: ImportOptions): Promise<number> {
-  const { title, text, coverUrl, language = 'de', chapterSize = getDefaultChapterSize(), preChapters } = options
+  const { title, text, coverUrl, language = 'de', type = 'book', chapterSize = getDefaultChapterSize(), preChapters } = options
 
   // Ensure lemmatizer is loaded for this language
   await initLemmatizer(language)
@@ -38,6 +39,8 @@ export async function importBook(options: ImportOptions): Promise<number> {
     title,
     coverUrl,
     language,
+    type,
+    archived: false,
     totalWords: totalWordCount,
     uniqueWords: allUniqueWords.length,
     createdAt: new Date(),

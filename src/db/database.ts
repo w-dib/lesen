@@ -8,11 +8,15 @@ export const LANGUAGES: { code: Language; label: string; flag: string }[] = [
   { code: 'ru', label: 'Russian', flag: '🇷🇺' },
 ]
 
+export type BookType = 'book' | 'text'
+
 export interface Book {
   id: number
   title: string
   coverUrl?: string
   language: Language
+  type: BookType
+  archived: boolean
   totalWords: number
   uniqueWords: number
   createdAt: Date
@@ -75,6 +79,17 @@ db.version(3).stores({
 }).upgrade(tx => {
   return tx.table('books').toCollection().modify(book => {
     if (!book.language) book.language = 'de'
+  })
+})
+
+db.version(4).stores({
+  books: '++id, title, lastOpenedAt',
+  chapters: '++id, bookId, orderIndex',
+  words: '++id, &text, lemma, level, *bookIds',
+}).upgrade(tx => {
+  return tx.table('books').toCollection().modify(book => {
+    if (book.type === undefined) book.type = 'book'
+    if (book.archived === undefined) book.archived = false
   })
 })
 
