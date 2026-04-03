@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { ExternalLink, Loader2, MessageSquareQuote, Volume2 } from 'lucide-react'
 import { db, type Word, type Language } from '@/db/database'
 import { lookupWord, translateSentence, getDictUrl } from '@/services/dictionary'
+import { preGenerateExercises } from '@/services/exerciseCache'
 import { cn } from '@/lib/utils'
 
 const LANG_BCP47: Record<Language, string> = { de: 'de-DE', af: 'af-ZA', ru: 'ru-RU' }
@@ -92,6 +93,11 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
       .where('lemma')
       .equals(lemma)
       .modify({ level: newLevel, updatedAt: now })
+
+    // Pre-generate review exercises when marking as learning
+    if (newLevel === 'learning') {
+      preGenerateExercises()
+    }
   }, [word, correctedLemma])
 
   // Increment lookup count on open

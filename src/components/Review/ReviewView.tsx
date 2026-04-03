@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { db, type Word } from '@/db/database'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { fetchReviewExercises, type ReviewExercise } from '@/services/reviewApi'
+import { getCachedExercises, markExercisesUsed, preGenerateExercises } from '@/services/exerciseCache'
 import { recordActivity } from '@/services/streak'
 import MatchExercise from './MatchExercise'
 import { cn } from '@/lib/utils'
@@ -80,12 +81,28 @@ export default function ReviewView() {
     setLoading(true)
     setError(null)
 
-    // Fetch exercises from DeepSeek
-    const wordsForApi = selected.map(g => ({ lemma: g.lemma, translation: g.translation }))
-    fetchReviewExercises(wordsForApi)
-      .then(exercises => {
-        const exerciseMap = new Map<string, ReviewExercise>()
-        for (const ex of exercises) {
+    // Try cache first, then fetch uncached from DeepSeek
+    const selectedLemmas = selected.map(g => g.lemma)
+    getCachedExercises(selectedLemmas)
+      .then(async (cachedMap) => {
+        // Find which lemmas still need exercises
+        const uncachedWords = selected
+          .filter(g => !cachedMap.has(g.lemma.toLowerCase()))
+          .map(g => ({ lemma: g.lemma, translation: g.translation }))
+
+        // Fetch only uncached exercises from API
+        let freshExercises: ReviewExercise[] = []
+        if (uncachedWords.length > 0) {
+          try {
+            freshExercises = await fetchReviewExercises(uncachedWords)
+          } catch {
+            // API failed — proceed with cached only
+          }
+        }
+
+        // Merge cached + fresh
+        const exerciseMap = new Map<string, ReviewExercise>(cachedMap)
+        for (const ex of freshExercises) {
           exerciseMap.set(ex.lemma.toLowerCase(), ex)
         }
 
@@ -206,6 +223,16 @@ export default function ReviewView() {
       </div>
     )
   }
+
+  // When session ends, mark exercises as used and pre-generate for next time
+  useEffect(() => {
+    if (isSessionDone && sessionCards.length > 0) {
+      const usedLemmas = sessionCards
+        .filter(c => c.type !== 'match')
+        .map(c => c.group.lemma)
+      markExercisesUsed(usedLemmas).then(() => preGenerateExercises())
+    }
+  }, [isSessionDone])
 
   if (isSessionDone) {
     const correctCount = results.filter(r => r === 'correct').length

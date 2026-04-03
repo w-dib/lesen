@@ -36,7 +36,7 @@ export default function App() {
     return (
       <div className="flex flex-1 items-center justify-center">
         <div className="flex flex-col items-center gap-3">
-          <img src="/logo.png" alt="Lesen" className="h-16 w-16" />
+          <img src="/logo.png" alt="Lesen" className="h-16 w-16" onLoad={e => (e.target as HTMLElement).style.visibility = 'visible'} style={{ visibility: 'hidden' }} />
           <p className="text-sm text-brown-muted animate-pulse">Loading Lesen...</p>
         </div>
       </div>

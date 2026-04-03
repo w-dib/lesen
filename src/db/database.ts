@@ -50,10 +50,22 @@ export interface Word {
   updatedAt: Date
 }
 
+export interface CachedExercise {
+  id: number
+  lemma: string
+  sentence: string
+  blanked: string
+  translation: string
+  distractors: string[]
+  used: boolean
+  createdAt: Date
+}
+
 const db = new Dexie('LesenDB') as Dexie & {
   books: EntityTable<Book, 'id'>
   chapters: EntityTable<Chapter, 'id'>
   words: EntityTable<Word, 'id'>
+  exercises: EntityTable<CachedExercise, 'id'>
 }
 
 db.version(1).stores({
@@ -91,6 +103,13 @@ db.version(4).stores({
     if (book.type === undefined) book.type = 'book'
     if (book.archived === undefined) book.archived = false
   })
+})
+
+db.version(5).stores({
+  books: '++id, title, lastOpenedAt',
+  chapters: '++id, bookId, orderIndex',
+  words: '++id, &text, lemma, level, *bookIds',
+  exercises: '++id, &lemma, used',
 })
 
 export { db }
