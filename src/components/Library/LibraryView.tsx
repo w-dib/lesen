@@ -5,6 +5,7 @@ import { useBookWordStats } from '@/hooks/useWords'
 import { db } from '@/db/database'
 import BookCard from './BookCard'
 import ImportModal from './ImportModal'
+import StreakBar from './StreakBar'
 import type { Book } from '@/db/database'
 
 function BookCardWithStats({ book }: { book: Book }) {
@@ -31,10 +32,11 @@ export default function LibraryView() {
     <div className="flex flex-1 flex-col">
       {/* Header */}
       <div className="px-5 pb-2 pt-[calc(env(safe-area-inset-top,16px)+16px)]">
-        <div className="flex items-center gap-2">
+        <div className="mb-3 flex items-center gap-2">
           <img src="/logo.png" alt="Lesen" className="h-7 w-7" />
           <h1 className="text-2xl font-bold text-brown">Library</h1>
         </div>
+        <StreakBar />
       </div>
 
       {/* Content */}

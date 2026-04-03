@@ -99,9 +99,23 @@ function extractTextFromDoc(root: Document | Element): string {
 
   walk(body)
 
-  return blocks.join(' ')
+  // Join blocks: add space between text nodes, but not around newline markers
+  let text = ''
+  for (let i = 0; i < blocks.length; i++) {
+    const block = blocks[i]
+    if (block === '\n' || block === '\n\n') {
+      text += block
+    } else {
+      // Add space before text if previous char isn't a newline or start
+      if (text.length > 0 && !text.endsWith('\n') && !text.endsWith(' ')) {
+        text += ' '
+      }
+      text += block
+    }
+  }
+
+  return text
     .replace(/ +/g, ' ')
-    .replace(/\n /g, '\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim()
 }

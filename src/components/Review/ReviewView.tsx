@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { db, type Word } from '@/db/database'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { fetchReviewExercises, type ReviewExercise } from '@/services/reviewApi'
+import { recordActivity } from '@/services/streak'
+import MatchExercise from './MatchExercise'
 import { cn } from '@/lib/utils'
 
 const SESSION_SIZE = 10
@@ -16,12 +18,13 @@ interface LemmaGroup {
   reviewStreak: number
 }
 
-type ExerciseType = 'flashcard' | 'cloze'
+type ExerciseType = 'flashcard' | 'cloze' | 'match'
 
 interface SessionCard {
   group: LemmaGroup
   exercise?: ReviewExercise
   type: ExerciseType
+  matchPairs?: { lemma: string; translation: string }[]
 }
 
 export default function ReviewView() {
@@ -95,6 +98,23 @@ export default function ReviewView() {
           return { group, exercise, type }
         })
 
+        // Insert a match round if we have 5+ words with translations
+        const withTranslation = selected.filter(g => g.translation)
+        if (withTranslation.length >= 5) {
+          const matchPairs = withTranslation.slice(0, 5).map(g => ({
+            lemma: g.lemma,
+            translation: g.translation!,
+          }))
+          // Insert match card halfway through
+          const matchCard: SessionCard = {
+            group: withTranslation[0],
+            type: 'match',
+            matchPairs,
+          }
+          const insertAt = Math.min(5, cards.length)
+          cards.splice(insertAt, 0, matchCard)
+        }
+
         setSessionCards(cards)
         setCurrentIdx(0)
         setResults([])
@@ -129,6 +149,7 @@ export default function ReviewView() {
     const newResult = correct ? 'correct' : 'wrong'
     setResults(prev => [...prev, newResult])
     setAnswered(true)
+    recordActivity()
 
     // Update streaks in DB
     const { group } = currentCard
@@ -262,9 +283,23 @@ export default function ReviewView() {
             }}
           />
         )}
+        {currentCard && currentCard.type === 'match' && currentCard.matchPairs && (
+          <MatchExercise
+            pairs={currentCard.matchPairs}
+            onComplete={(correct, total) => {
+              // Record each match result individually
+              for (let i = 0; i < total; i++) {
+                setResults(prev => [...prev, i < correct ? 'correct' : 'wrong'])
+              }
+              setAnswered(true)
+              // Auto-advance after a brief pause
+              setTimeout(advanceToNext, 800)
+            }}
+          />
+        )}
 
-        {/* Next button — visible after answering */}
-        {answered && (
+        {/* Next button — visible after answering (not for match, it has its own) */}
+        {answered && currentCard?.type !== 'match' && (
           <button
             onClick={advanceToNext}
             className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brown py-3.5 text-sm font-medium text-cream transition-all active:scale-[0.98]"

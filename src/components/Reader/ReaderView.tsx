@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, ChevronLeft, ChevronRight, CheckCheck, EyeOff } from 'lucide-react'
+import { ArrowLeft, ChevronLeft, ChevronRight, CheckCheck, EyeOff, Globe } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Button } from '@/components/ui/button'
 import { getReaderFontSize } from '@/components/Settings/SettingsView'
@@ -8,6 +8,8 @@ import { WordSpan } from './WordSpan'
 import WordBottomSheet from './WordBottomSheet'
 import { tokenize } from '@/services/textProcessor'
 import { db, type Word, type Chapter } from '@/db/database'
+import { isKnownWord } from '@/services/lemmatizer'
+import { recordActivity } from '@/services/streak'
 
 const WORDS_PER_PAGE = 500
 
@@ -77,10 +79,11 @@ export default function ReaderView() {
     }
   }, [cId])
 
-  // Save current page
+  // Save current page and record activity
   useEffect(() => {
     if (totalPages > 0) {
       db.books.update(bId, { lastChapterId: cId, lastPage: page })
+      recordActivity()
     }
   }, [bId, cId, page, totalPages])
 
@@ -152,6 +155,22 @@ export default function ReaderView() {
     })
   }
 
+  // Ignore new words that are NOT in the target language dictionary
+  async function handleIgnoreForeignWords() {
+    const lang = book?.language ?? 'de'
+    const now = new Date()
+    const newWords = [...(wordMap?.values() ?? [])].filter(w => w.level === 'new')
+    const foreignWords = newWords.filter(w => !isKnownWord(w.text, lang))
+    const lemmas = [...new Set(foreignWords.map(w => w.lemma))]
+    if (lemmas.length === 0) return
+    await db.transaction('rw', db.words, async () => {
+      await db.words
+        .where('lemma')
+        .anyOf(lemmas)
+        .modify({ level: 'ignored', updatedAt: now })
+    })
+  }
+
   function goNextPage() {
     if (page < totalPages - 1) {
       setPage(page + 1)
@@ -176,7 +195,9 @@ export default function ReaderView() {
     )
   }
 
-  const newCount = [...wordMap.values()].filter(w => w.level === 'new').length
+  const newWords = [...wordMap.values()].filter(w => w.level === 'new')
+  const newCount = newWords.length
+  const foreignCount = newWords.filter(w => !isKnownWord(w.text, book?.language ?? 'de')).length
 
   return (
     <div className="flex flex-1 flex-col bg-cream">
@@ -218,6 +239,12 @@ export default function ReaderView() {
               <EyeOff className="h-4 w-4" />
               Ignore all {newCount} new words
             </Button>
+            {foreignCount > 0 && (
+              <Button variant="outline" size="sm" className="w-full text-brown-muted" onClick={handleIgnoreForeignWords}>
+                <Globe className="h-4 w-4" />
+                Ignore {foreignCount} non-German words
+              </Button>
+            )}
           </div>
         )}
       </div>

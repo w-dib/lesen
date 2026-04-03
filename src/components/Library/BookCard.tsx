@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { BookOpen, FileText, Archive } from 'lucide-react'
+import { BookOpen, FileText, Archive, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { db, type Book } from '@/db/database'
 
@@ -20,16 +20,30 @@ interface BookCardProps {
 export default function BookCard({ book, knownPercent }: BookCardProps) {
   const navigate = useNavigate()
   const [showActions, setShowActions] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   async function handleArchive(e: React.MouseEvent) {
     e.stopPropagation()
     await db.books.update(book.id, { archived: true })
+    setShowActions(false)
+  }
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation()
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      return
+    }
+    // Delete book and its chapters, but keep words
+    await db.chapters.where('bookId').equals(book.id).delete()
+    await db.books.delete(book.id)
+    setShowActions(false)
   }
 
   return (
     <button
-      onClick={() => navigate(`/book/${book.id}`)}
-      onContextMenu={(e) => { e.preventDefault(); setShowActions(!showActions) }}
+      onClick={() => showActions ? setShowActions(false) : navigate(`/book/${book.id}`)}
+      onContextMenu={(e) => { e.preventDefault(); setShowActions(!showActions); setConfirmDelete(false) }}
       className="relative flex gap-4 rounded-xl border border-brown-muted/10 bg-white p-3 text-left transition-colors hover:bg-cream-dark/50 active:bg-cream-dark"
     >
       {/* Cover */}
@@ -84,10 +98,10 @@ export default function BookCard({ book, knownPercent }: BookCardProps) {
         </div>
       </div>
 
-      {/* Archive button — shown on long-press / right-click */}
+      {/* Actions — shown on long-press / right-click */}
       {showActions && (
         <div
-          className="absolute right-2 top-2 z-10 animate-in fade-in"
+          className="absolute right-2 top-2 z-10 flex gap-1.5 animate-in fade-in"
           onClick={e => e.stopPropagation()}
         >
           <button
@@ -96,6 +110,13 @@ export default function BookCard({ book, knownPercent }: BookCardProps) {
           >
             <Archive className="h-3.5 w-3.5" />
             Archive
+          </button>
+          <button
+            onClick={handleDelete}
+            className="flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow-md"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            {confirmDelete ? 'Confirm?' : 'Delete'}
           </button>
         </div>
       )}
