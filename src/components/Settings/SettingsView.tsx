@@ -68,7 +68,7 @@ export default function SettingsView() {
         <h1 className="mb-4 text-2xl font-bold text-brown">Settings</h1>
       </div>
 
-      <div className="flex flex-col gap-6 px-5 pb-8">
+      <div className="mx-auto flex w-full max-w-xl flex-col gap-6 px-5 pb-8">
         {/* Language */}
         <SettingsSection title="I'm learning" description="Default language for new book imports">
           <div className="flex gap-2">

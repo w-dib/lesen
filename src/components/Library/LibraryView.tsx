@@ -43,7 +43,7 @@ export default function LibraryView() {
         ) : (
           <>
             <div className="mb-3 flex items-center gap-2">
-              <img src="/logo.png" alt="Lesen" className="h-7 w-7" />
+              <img src="/logo.png" alt="Lesen" className="h-7 w-7 lg:hidden" />
               <h1 className="text-2xl font-bold text-brown">Library</h1>
             </div>
             <StreakBar />
@@ -63,7 +63,7 @@ export default function LibraryView() {
           <p className="mt-1 text-sm text-brown-muted">Tap + to add your first content</p>
         </div>
       ) : (
-        <div className="flex flex-1 flex-col gap-2 overflow-y-auto px-4 pb-24">
+        <div className="grid grid-cols-1 gap-2 overflow-y-auto px-4 pb-24 lg:grid-cols-2 xl:grid-cols-3">
           {displayBooks?.map(book => (
             <BookCardWithStats key={book.id} book={book} />
           ))}
@@ -86,7 +86,7 @@ export default function LibraryView() {
       {/* FAB */}
       <button
         onClick={() => setImportOpen(true)}
-        className="fixed bottom-24 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-brown text-cream shadow-lg transition-transform active:scale-95"
+        className="fixed bottom-24 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-brown text-cream shadow-lg transition-transform active:scale-95 lg:bottom-8"
       >
         <Plus className="h-7 w-7" />
       </button>

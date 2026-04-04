@@ -202,7 +202,8 @@ export default function ReaderView() {
   return (
     <div className="flex flex-1 flex-col bg-cream">
       {/* Reading area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 pb-20 pt-4">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 pb-20 pt-4 lg:px-0">
+        <div className="mx-auto lg:max-w-2xl">
         {/* Inline header — scrolls with content */}
         <div className="mb-4 flex items-center gap-2">
           <button
@@ -247,6 +248,7 @@ export default function ReaderView() {
             )}
           </div>
         )}
+        </div>
       </div>
 
       {/* Sticky bottom page nav */}

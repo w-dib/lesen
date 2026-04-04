@@ -275,6 +275,7 @@ export default function ReviewView() {
 
   return (
     <div className="flex flex-1 flex-col">
+      <div className="mx-auto w-full lg:max-w-xl">
       <ReviewHeader
         onBack={() => navigate('/vocabulary')}
         progress={`${currentIdx + 1} / ${sessionCards.length}`}
@@ -340,6 +341,7 @@ export default function ReviewView() {
             <ArrowRight className="h-5 w-5" />
           </button>
         )}
+      </div>
       </div>
     </div>
   )

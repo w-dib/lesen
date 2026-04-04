@@ -128,7 +128,7 @@ export default function VocabularyView() {
   return (
     <div className="flex flex-1 flex-col">
       {/* Header */}
-      <div className="px-5 pb-2 pt-[calc(env(safe-area-inset-top,16px)+16px)]">
+      <div className="px-5 pb-2 pt-[calc(env(safe-area-inset-top,16px)+16px)] lg:mx-auto lg:w-full lg:max-w-3xl">
         <div className="mb-3 flex items-center justify-between">
           <h1 className="text-2xl font-bold text-brown">Vocabulary</h1>
           {counts.learning > 0 && (
@@ -170,7 +170,7 @@ export default function VocabularyView() {
       </div>
 
       {/* Word list */}
-      <div ref={parentRef} className="flex-1 overflow-y-auto px-4">
+      <div ref={parentRef} className="flex-1 overflow-y-auto px-4 lg:mx-auto lg:w-full lg:max-w-3xl">
         {groups.length === 0 ? (
           <p className="mt-8 text-center text-sm text-brown-muted">No words match your search</p>
         ) : (
