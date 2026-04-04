@@ -7,7 +7,7 @@ import { lookupWord, translateSentence, getDictUrl } from '@/services/dictionary
 import { preGenerateExercises } from '@/services/exerciseCache'
 import { cn } from '@/lib/utils'
 
-const LANG_BCP47: Record<Language, string> = { de: 'de-DE', af: 'af-ZA', ru: 'ru-RU' }
+const LANG_BCP47: Record<Language, string> = { de: 'de-DE', af: 'af-ZA', ru: 'ru-RU', ar: 'ar-SA' }
 
 /** Normalize a translation for dedup comparison */
 function normalizeTranslation(t: string): string {

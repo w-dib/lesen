@@ -1,11 +1,12 @@
 import Dexie, { type EntityTable } from 'dexie'
 
-export type Language = 'de' | 'af' | 'ru'
+export type Language = 'de' | 'af' | 'ru' | 'ar'
 
 export const LANGUAGES: { code: Language; label: string; flag: string }[] = [
   { code: 'de', label: 'German', flag: '🇩🇪' },
   { code: 'af', label: 'Afrikaans', flag: '🇿🇦' },
   { code: 'ru', label: 'Russian', flag: '🇷🇺' },
+  { code: 'ar', label: 'Arabic', flag: '🇸🇦' },
 ]
 
 export type BookType = 'book' | 'text'

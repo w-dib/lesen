@@ -215,7 +215,7 @@ export default function ReaderView() {
           <p className="text-sm font-medium text-brown truncate">{chapter.title}</p>
         </div>
 
-        <div className="leading-[2] text-brown" style={{ fontSize: `${getReaderFontSize()}px` }}>
+        <div className="leading-[2] text-brown" dir={book?.language === 'ar' ? 'rtl' : 'ltr'} style={{ fontSize: `${getReaderFontSize()}px` }}>
           {pageTokens.map((token, i) => {
             const globalIdx = pageRange.start + i
             return (
@@ -243,7 +243,7 @@ export default function ReaderView() {
             {foreignCount > 0 && (
               <Button variant="outline" size="sm" className="w-full text-brown-muted" onClick={handleIgnoreForeignWords}>
                 <Globe className="h-4 w-4" />
-                Ignore {foreignCount} non-German words
+                Ignore {foreignCount} foreign words
               </Button>
             )}
           </div>

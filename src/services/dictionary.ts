@@ -4,6 +4,7 @@ const LANG_NAMES: Record<Language, string> = {
   de: 'German',
   af: 'Afrikaans',
   ru: 'Russian',
+  ar: 'Arabic',
 }
 
 interface LookupResult {
@@ -78,5 +79,7 @@ export function getDictUrl(word: string, lang: Language = 'de'): { url: string; 
       return { url: `https://en.openrussian.org/ru/${encodeURIComponent(word)}`, label: 'OpenRussian' }
     case 'af':
       return { url: `https://www.lexilogos.com/english/afrikaans_dictionary.htm?q=${encodeURIComponent(word)}`, label: 'Lexilogos' }
+    case 'ar':
+      return { url: `https://www.almaany.com/en/dict/ar-en/${encodeURIComponent(word)}`, label: 'Almaany' }
   }
 }
