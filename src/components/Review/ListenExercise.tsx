@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react'
-import { Volume2, Check, X, ArrowRight } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { Volume2, Check, X, ArrowRight, Turtle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Language } from '@/db/database'
 
@@ -10,54 +10,91 @@ interface ListenExerciseProps {
   sentence: string
   /** English translation, shown only after reveal. */
   translation: string
+  /** Optional distractor words to mix into the bag. */
+  distractors?: string[]
   language?: Language
   onComplete: (correct: boolean) => void
   onAdvance: () => void
 }
 
-/** Normalize text for comparison: lowercase, strip punctuation, collapse whitespace. */
-function normalize(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[.,!?;:„"""''()\[\]\-—–]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+/** Tokenize a sentence into individual words, dropping punctuation. */
+function tokenize(sentence: string): string[] {
+  return sentence
+    .replace(/[.,!?;:„"""''()\[\]]/g, ' ')
+    .split(/\s+/)
+    .map(w => w.trim())
+    .filter(Boolean)
 }
 
-function speak(text: string, lang: Language) {
+/** Normalize a token for comparison. */
+function norm(token: string): string {
+  return token.toLowerCase().replace(/[.,!?;:„"""''()\[\]]/g, '')
+}
+
+function speak(text: string, lang: Language, rate = 0.85) {
   speechSynthesis.cancel()
   const utterance = new SpeechSynthesisUtterance(text)
   utterance.lang = LANG_BCP47[lang] ?? 'de-DE'
-  utterance.rate = 0.85
+  utterance.rate = rate
   speechSynthesis.speak(utterance)
+}
+
+interface BagWord {
+  id: number
+  text: string
 }
 
 export default function ListenExercise({
   sentence,
   translation,
+  distractors = [],
   language = 'de',
   onComplete,
   onAdvance,
 }: ListenExerciseProps) {
-  const [input, setInput] = useState('')
+  const targetTokens = useMemo(() => tokenize(sentence), [sentence])
+
+  const initialBag = useMemo(() => {
+    const distractorTokens = distractors.slice(0, 2).flatMap(d => tokenize(d))
+    const all = [...targetTokens, ...distractorTokens]
+    return all
+      .map((text, idx) => ({ id: idx, text }))
+      .sort(() => Math.random() - 0.5)
+  }, [targetTokens, distractors])
+
+  const [bag, setBag] = useState<BagWord[]>(initialBag)
+  const [built, setBuilt] = useState<BagWord[]>([])
   const [revealed, setRevealed] = useState(false)
   const [isCorrect, setIsCorrect] = useState(false)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
   const playedOnce = useRef(false)
 
-  // Auto-play once on mount + focus input
+  // Auto-play once on mount
   useEffect(() => {
     if (playedOnce.current) return
     playedOnce.current = true
-    // Small delay so the sheet animation doesn't fight with TTS
     const t = setTimeout(() => speak(sentence, language), 250)
-    inputRef.current?.focus()
     return () => clearTimeout(t)
   }, [sentence, language])
 
+  function tapBag(word: BagWord) {
+    if (revealed) return
+    setBag(prev => prev.filter(w => w.id !== word.id))
+    setBuilt(prev => [...prev, word])
+  }
+
+  function tapBuilt(word: BagWord) {
+    if (revealed) return
+    setBuilt(prev => prev.filter(w => w.id !== word.id))
+    setBag(prev => [...prev, word])
+  }
+
   function handleSubmit() {
-    if (!input.trim()) return
-    const correct = normalize(input) === normalize(sentence)
+    if (built.length === 0) return
+    const builtNorm = built.map(w => norm(w.text))
+    const targetNorm = targetTokens.map(norm)
+    const correct =
+      builtNorm.length === targetNorm.length &&
+      builtNorm.every((w, i) => w === targetNorm[i])
     setIsCorrect(correct)
     setRevealed(true)
     onComplete(correct)
@@ -65,44 +102,84 @@ export default function ListenExercise({
 
   return (
     <div className="flex flex-1 flex-col">
-      {/* Prompt */}
+      {/* Listen prompt */}
       <div className="mt-2 rounded-2xl border border-brown-muted/15 bg-white p-5 shadow-sm">
         <p className="mb-3 text-xs font-medium uppercase tracking-wide text-brown-muted">
-          Listen and type what you hear
+          Listen and build the sentence
         </p>
-        <button
-          onClick={() => speak(sentence, language)}
-          className="flex w-full items-center justify-center gap-3 rounded-xl bg-amber/20 py-5 text-brown transition-all active:scale-[0.98] hover:bg-amber/30"
-        >
-          <Volume2 className="h-7 w-7" />
-          <span className="text-sm font-medium">Play again</span>
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => speak(sentence, language)}
+            className="flex flex-1 items-center justify-center gap-3 rounded-xl bg-amber/20 py-5 text-brown transition-all active:scale-[0.98] hover:bg-amber/30"
+          >
+            <Volume2 className="h-7 w-7" />
+            <span className="text-sm font-medium">Play</span>
+          </button>
+          <button
+            onClick={() => speak(sentence, language, 0.55)}
+            className="flex items-center justify-center rounded-xl bg-cream-dark px-4 py-5 text-brown-muted transition-all active:scale-[0.98] hover:bg-amber/20 hover:text-brown"
+            title="Play slowly"
+          >
+            <Turtle className="h-6 w-6" />
+          </button>
+        </div>
       </div>
 
-      {/* Input */}
-      <div className="mt-4">
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          disabled={revealed}
-          placeholder="Type what you heard..."
-          rows={3}
-          className={cn(
-            'w-full rounded-xl border-2 bg-white p-3 text-base text-brown placeholder:text-brown-muted/60 focus:outline-none focus:ring-2 focus:ring-gold',
-            revealed
-              ? isCorrect
-                ? 'border-green-400 bg-green-50'
-                : 'border-red-300 bg-red-50'
-              : 'border-brown-muted/20',
+      {/* Build area */}
+      <div
+        className={cn(
+          'mt-4 min-h-[88px] rounded-2xl border-2 border-dashed p-3',
+          revealed
+            ? isCorrect
+              ? 'border-green-400 bg-green-50'
+              : 'border-red-300 bg-red-50'
+            : 'border-brown-muted/25 bg-white',
+        )}
+      >
+        {built.length === 0 ? (
+          <p className="flex h-full min-h-[64px] items-center justify-center text-xs text-brown-muted">
+            Tap words below in the order you hear them
+          </p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {built.map(word => (
+              <button
+                key={word.id}
+                onClick={() => tapBuilt(word)}
+                disabled={revealed}
+                className={cn(
+                  'rounded-lg border border-brown-muted/20 bg-cream-dark px-3 py-2 text-sm font-medium text-brown shadow-sm transition-all',
+                  !revealed && 'active:scale-95 hover:bg-amber/20',
+                )}
+              >
+                {word.text}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Word bag */}
+      <div className="mt-3 rounded-2xl border border-brown-muted/10 bg-cream-dark/40 p-3">
+        <div className="flex flex-wrap gap-2">
+          {bag.map(word => (
+            <button
+              key={word.id}
+              onClick={() => tapBag(word)}
+              disabled={revealed}
+              className={cn(
+                'rounded-lg border border-brown-muted/20 bg-white px-3 py-2 text-sm font-medium text-brown shadow-sm transition-all',
+                !revealed && 'active:scale-95 hover:bg-amber/20',
+                revealed && 'opacity-40',
+              )}
+            >
+              {word.text}
+            </button>
+          ))}
+          {bag.length === 0 && (
+            <p className="px-1 py-2 text-xs text-brown-muted">All words used</p>
           )}
-          onKeyDown={e => {
-            if (e.key === 'Enter' && !e.shiftKey && !revealed) {
-              e.preventDefault()
-              handleSubmit()
-            }
-          }}
-        />
+        </div>
       </div>
 
       {/* Feedback */}
@@ -129,10 +206,10 @@ export default function ListenExercise({
       {!revealed ? (
         <button
           onClick={handleSubmit}
-          disabled={!input.trim()}
+          disabled={built.length === 0}
           className={cn(
             'mt-4 flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-medium transition-all active:scale-[0.98]',
-            !input.trim()
+            built.length === 0
               ? 'bg-cream-dark text-brown-muted'
               : 'bg-brown text-cream',
           )}

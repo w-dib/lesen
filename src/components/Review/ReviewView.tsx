@@ -356,6 +356,7 @@ export default function ReviewView() {
           <ListenExercise
             sentence={currentCard.exercise.sentence}
             translation={currentCard.exercise.translation}
+            distractors={currentCard.exercise.distractors}
             language={getDefaultLanguage()}
             onComplete={(correct) => recordResult(correct)}
             onAdvance={advanceToNext}
