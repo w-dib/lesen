@@ -8,6 +8,9 @@ import { fetchReviewExercises, type ReviewExercise } from '@/services/reviewApi'
 import { getCachedExercises, markExercisesUsed, preGenerateExercises } from '@/services/exerciseCache'
 import { recordActivity } from '@/services/streak'
 import MatchExercise from './MatchExercise'
+import BuilderExercise from './BuilderExercise'
+import ListenExercise from './ListenExercise'
+import { getDefaultLanguage } from '@/components/Settings/SettingsView'
 import { cn } from '@/lib/utils'
 
 const SESSION_SIZE = 10
@@ -19,7 +22,7 @@ interface LemmaGroup {
   reviewStreak: number
 }
 
-type ExerciseType = 'flashcard' | 'cloze' | 'match'
+type ExerciseType = 'flashcard' | 'cloze' | 'match' | 'builder' | 'listen'
 
 interface SessionCard {
   group: LemmaGroup
@@ -112,12 +115,35 @@ export default function ReviewView() {
           exerciseMap.set(ex.lemma.toLowerCase(), ex)
         }
 
+        // Build a set of "familiar" word texts (known/learning/ignored) so we can
+        // prefer assigning builder/listen to sentences whose other words are known.
+        const familiarRecords = await db.words
+          .where('level')
+          .anyOf(['known', 'learning', 'ignored'])
+          .toArray()
+        const familiarSet = new Set(familiarRecords.map(w => w.text.toLowerCase()))
+
+        function sentenceFamiliarity(sentence: string, lemma: string): number {
+          const tokens = (sentence.toLowerCase().match(/[\p{L}\p{M}'-]+/gu) || [])
+            .filter(t => t !== lemma.toLowerCase())
+          if (tokens.length === 0) return 1
+          const known = tokens.filter(t => familiarSet.has(t)).length
+          return known / tokens.length
+        }
+
         const cards: SessionCard[] = selected.map(group => {
           const exercise = exerciseMap.get(group.lemma.toLowerCase())
-          // Randomly assign flashcard or cloze (prefer cloze if we have an exercise)
-          const type: ExerciseType = exercise
-            ? (Math.random() > 0.4 ? 'cloze' : 'flashcard')
-            : 'flashcard'
+          if (!exercise) {
+            return { group, exercise, type: 'flashcard' as ExerciseType }
+          }
+          // Decide which exercise type to assign. Builder and listen require
+          // a sentence where most other words are already familiar to the user.
+          const familiarRatio = sentenceFamiliarity(exercise.sentence, group.lemma)
+          const allowProductive = familiarRatio >= 0.8
+          const pool: ExerciseType[] = allowProductive
+            ? ['cloze', 'builder', 'listen', 'flashcard']
+            : ['cloze', 'flashcard']
+          const type = pool[Math.floor(Math.random() * pool.length)]
           return { group, exercise, type }
         })
 
@@ -317,6 +343,24 @@ export default function ReviewView() {
             }}
           />
         )}
+        {currentCard && currentCard.type === 'builder' && currentCard.exercise && (
+          <BuilderExercise
+            sentence={currentCard.exercise.sentence}
+            translation={currentCard.exercise.translation}
+            distractors={currentCard.exercise.distractors}
+            onComplete={(correct) => recordResult(correct)}
+            onAdvance={advanceToNext}
+          />
+        )}
+        {currentCard && currentCard.type === 'listen' && currentCard.exercise && (
+          <ListenExercise
+            sentence={currentCard.exercise.sentence}
+            translation={currentCard.exercise.translation}
+            language={getDefaultLanguage()}
+            onComplete={(correct) => recordResult(correct)}
+            onAdvance={advanceToNext}
+          />
+        )}
         {currentCard && currentCard.type === 'match' && currentCard.matchPairs && (
           <MatchExercise
             pairs={currentCard.matchPairs}
@@ -348,8 +392,8 @@ export default function ReviewView() {
           />
         )}
 
-        {/* Next button — visible after answering (not for match, it has its own) */}
-        {answered && currentCard?.type !== 'match' && (
+        {/* Next button — visible after answering (not for match/builder/listen, they have their own) */}
+        {answered && currentCard?.type !== 'match' && currentCard?.type !== 'builder' && currentCard?.type !== 'listen' && (
           <button
             onClick={advanceToNext}
             className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-brown py-3.5 text-sm font-medium text-cream transition-all active:scale-[0.98]"
