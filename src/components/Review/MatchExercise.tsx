@@ -9,7 +9,7 @@ interface MatchPair {
 
 interface MatchExerciseProps {
   pairs: MatchPair[]
-  onComplete: (correctCount: number, totalCount: number) => void
+  onComplete: (results: { lemma: string; correct: boolean }[]) => void
 }
 
 export default function MatchExercise({ pairs, onComplete }: MatchExerciseProps) {
@@ -59,11 +59,11 @@ export default function MatchExercise({ pairs, onComplete }: MatchExerciseProps)
   }
 
   function handleNext() {
-    let correct = 0
-    for (const pair of pairs) {
-      if (matches.get(pair.lemma) === pair.translation) correct++
-    }
-    onComplete(correct, pairs.length)
+    const results = pairs.map(pair => ({
+      lemma: pair.lemma,
+      correct: matches.get(pair.lemma) === pair.translation,
+    }))
+    onComplete(results)
   }
 
   function isLeftMatched(lemma: string) {

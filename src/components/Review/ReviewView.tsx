@@ -320,11 +320,27 @@ export default function ReviewView() {
         {currentCard && currentCard.type === 'match' && currentCard.matchPairs && (
           <MatchExercise
             pairs={currentCard.matchPairs}
-            onComplete={(correct, total) => {
-              // Record each match result individually
-              for (let i = 0; i < total; i++) {
-                setResults(prev => [...prev, i < correct ? 'correct' : 'wrong'])
-              }
+            onComplete={async (matchResults) => {
+              // Update each word's reviewStreak in the DB, just like flashcard/cloze
+              const now = new Date()
+              const learningGroups = groups // current learning words for streak lookup
+              await Promise.all(matchResults.map(async ({ lemma, correct }) => {
+                const grp = learningGroups.find(g => g.lemma === lemma)
+                const currentStreak = grp?.reviewStreak ?? 0
+                const newStreak = correct ? currentStreak + 1 : 0
+                const shouldPromote = newStreak >= 3
+                await db.words
+                  .where('lemma')
+                  .equals(lemma)
+                  .modify({
+                    reviewStreak: newStreak,
+                    lastReviewedAt: now,
+                    updatedAt: now,
+                    ...(shouldPromote ? { level: 'known' as const } : {}),
+                  })
+                setResults(prev => [...prev, correct ? 'correct' : 'wrong'])
+              }))
+              recordActivity()
               setAnswered(true)
               // Auto-advance after a brief pause
               setTimeout(advanceToNext, 800)
