@@ -129,4 +129,19 @@ db.version(6).stores({
   })
 })
 
+db.version(7).stores({
+  books: '++id, title, lastOpenedAt',
+  chapters: '++id, bookId, orderIndex',
+  words: '++id, &text, lemma, level, *bookIds',
+  exercises: '++id, &lemma, used',
+}).upgrade(async tx => {
+  // Re-run stale bookId cleanup (in case any slipped through), then delete
+  // any orphan words that no longer belong to any book.
+  const bookIds = new Set((await tx.table('books').toArray()).map((b: Book) => b.id))
+  await tx.table('words').toCollection().modify((word: Word) => {
+    word.bookIds = word.bookIds.filter(id => bookIds.has(id))
+  })
+  await tx.table('words').filter((w: Word) => w.bookIds.length === 0).delete()
+})
+
 export { db }
