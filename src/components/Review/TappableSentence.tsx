@@ -3,29 +3,26 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Word } from '@/db/database'
 import { cn } from '@/lib/utils'
 
-interface Token {
-  pre: string
-  word: string
-  post: string
-  key: string
-}
+type Segment =
+  | { type: 'word'; text: string; key: string }
+  | { type: 'text'; text: string; key: string }
 
-/** Tokenize a sentence preserving punctuation and spacing, so we can render the
- * sentence exactly while making each word individually clickable. */
-function tokenize(sentence: string): Token[] {
-  const tokens: Token[] = []
-  const re = /(\s*)([\p{L}\p{M}'-]+)([^\s\p{L}\p{M}'-]*)/gu
+/** Split a sentence into alternating word / non-word segments so we can make
+ * each word clickable while preserving punctuation, whitespace, and markers
+ * like "______". */
+function parseSegments(sentence: string): Segment[] {
+  const segments: Segment[] = []
+  const re = /([\p{L}\p{M}'-]+)|([^\p{L}\p{M}'-]+)/gu
   let match: RegExpExecArray | null
-  let idx = 0
+  let i = 0
   while ((match = re.exec(sentence)) !== null) {
-    tokens.push({
-      pre: match[1] ?? '',
-      word: match[2] ?? '',
-      post: match[3] ?? '',
-      key: `${idx++}-${match[2]}`,
-    })
+    if (match[1]) {
+      segments.push({ type: 'word', text: match[1], key: `w${i++}-${match[1]}` })
+    } else if (match[2]) {
+      segments.push({ type: 'text', text: match[2], key: `t${i++}` })
+    }
   }
-  return tokens
+  return segments
 }
 
 const levelBg: Record<string, string> = {
@@ -39,20 +36,20 @@ interface TappableSentenceProps {
   sentence: string
   onTapWord: (wordText: string, existingWord: Word | undefined) => void
   className?: string
-  /** Highlight underline the blank placeholder "______" instead of treating it as word. */
-  blankMarker?: string
 }
 
 export default function TappableSentence({
   sentence,
   onTapWord,
   className,
-  blankMarker = '______',
 }: TappableSentenceProps) {
-  const tokens = useMemo(() => tokenize(sentence), [sentence])
+  const segments = useMemo(() => parseSegments(sentence), [sentence])
 
-  // Query DB for any words whose text matches what we tokenised (lowercased)
-  const lowered = useMemo(() => tokens.map(t => t.word.toLowerCase()), [tokens])
+  // Query DB for any words whose text matches what we parsed (lowercased)
+  const lowered = useMemo(
+    () => segments.filter(s => s.type === 'word').map(s => s.text.toLowerCase()),
+    [segments],
+  )
   const wordRecords = useLiveQuery(
     async () => {
       if (lowered.length === 0) return new Map<string, Word>()
@@ -64,39 +61,29 @@ export default function TappableSentence({
 
   return (
     <span className={className}>
-      {tokens.map(tok => {
-        // Render the blank marker as non-interactive
-        if (tok.word === blankMarker || tok.word.replace(/_/g, '') === '') {
-          return (
-            <span key={tok.key}>
-              {tok.pre}
-              {tok.word}
-              {tok.post}
-            </span>
-          )
+      {segments.map(seg => {
+        if (seg.type === 'text') {
+          return <span key={seg.key}>{seg.text}</span>
         }
 
-        const existing = wordRecords?.get(tok.word.toLowerCase())
+        const existing = wordRecords?.get(seg.text.toLowerCase())
         const bgClass = existing ? levelBg[existing.level] ?? '' : ''
         const dimmed = existing?.level === 'ignored'
 
         return (
-          <span key={tok.key}>
-            {tok.pre}
-            <span
-              role="button"
-              tabIndex={0}
-              onClick={() => onTapWord(tok.word, existing)}
-              className={cn(
-                'cursor-pointer rounded-sm px-[1px] transition-colors',
-                bgClass,
-                dimmed && 'opacity-50',
-                !bgClass && 'hover:bg-cream-dark',
-              )}
-            >
-              {tok.word}
-            </span>
-            {tok.post}
+          <span
+            key={seg.key}
+            role="button"
+            tabIndex={0}
+            onClick={() => onTapWord(seg.text, existing)}
+            className={cn(
+              'cursor-pointer rounded-sm px-[1px] transition-colors',
+              bgClass,
+              dimmed && 'opacity-50',
+              !bgClass && 'hover:bg-cream-dark',
+            )}
+          >
+            {seg.text}
           </span>
         )
       })}
