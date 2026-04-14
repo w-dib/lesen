@@ -4,6 +4,7 @@ const LANG_NAMES: Record<Language, string> = {
   de: 'German',
   af: 'Afrikaans',
   ru: 'Russian',
+  ar: 'Arabic',
 }
 
 export interface ChatMessage {

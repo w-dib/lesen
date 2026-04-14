@@ -1,4 +1,4 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
+export const config = { runtime: 'edge' }
 
 interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -14,18 +14,30 @@ interface ReviewContext {
   language?: string
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: Request): Promise<Response> {
   if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
   const apiKey = process.env.DEEPSEEK_API_KEY
   if (!apiKey) {
-    return res.status(500).json({ error: 'DeepSeek API key not configured' })
+    return new Response(JSON.stringify({ error: 'DeepSeek API key not configured' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    })
   }
 
-  const { messages, context } = req.body as { messages: ChatMessage[]; context?: ReviewContext }
+  let body: { messages: ChatMessage[]; context?: ReviewContext }
+  try {
+    body = await req.json()
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 })
+  }
 
+  const { messages, context } = body
   const lang = context?.language || 'German'
   const parts: string[] = [
     `You are a friendly, concise ${lang} language tutor. Answer the user's questions about vocabulary, grammar, and usage in a warm, clear way. Keep responses short (2-4 sentences max unless explicitly asked for more). Use plain text — no markdown headers or bullet lists unless specifically useful.`,
@@ -41,60 +53,75 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
   const systemPrompt = parts.join(' ')
 
-  try {
-    const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'deepseek-chat',
-        messages: [{ role: 'system', content: systemPrompt }, ...messages],
-        stream: true,
-        temperature: 0.5,
-        max_tokens: 500,
-      }),
+  const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [{ role: 'system', content: systemPrompt }, ...messages],
+      stream: true,
+      temperature: 0.5,
+      max_tokens: 500,
+    }),
+  })
+
+  if (!deepseekRes.ok || !deepseekRes.body) {
+    const errText = await deepseekRes.text()
+    return new Response(JSON.stringify({ error: errText }), {
+      status: deepseekRes.status || 500,
+      headers: { 'Content-Type': 'application/json' },
     })
-
-    if (!deepseekRes.ok || !deepseekRes.body) {
-      const text = await deepseekRes.text()
-      return res.status(deepseekRes.status || 500).json({ error: text })
-    }
-
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
-    res.setHeader('Cache-Control', 'no-cache')
-    res.setHeader('X-Accel-Buffering', 'no')
-
-    const reader = deepseekRes.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (!trimmed || !trimmed.startsWith('data:')) continue
-        const data = trimmed.slice(5).trim()
-        if (data === '[DONE]') continue
-        try {
-          const parsed = JSON.parse(data)
-          const delta = parsed.choices?.[0]?.delta?.content
-          if (delta) res.write(delta)
-        } catch {
-          // skip malformed chunk
-        }
-      }
-    }
-
-    res.end()
-  } catch {
-    if (!res.headersSent) res.status(500).json({ error: 'Chat request failed' })
-    else res.end()
   }
+
+  // Transform DeepSeek's SSE stream into a plain text stream of deltas.
+  const reader = deepseekRes.body.getReader()
+  const decoder = new TextDecoder()
+  const encoder = new TextEncoder()
+  let buffer = ''
+
+  const stream = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read()
+        if (done) {
+          controller.close()
+          return
+        }
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed.startsWith('data:')) continue
+          const data = trimmed.slice(5).trim()
+          if (data === '[DONE]') continue
+          try {
+            const parsed = JSON.parse(data)
+            const delta = parsed.choices?.[0]?.delta?.content
+            if (typeof delta === 'string' && delta.length > 0) {
+              controller.enqueue(encoder.encode(delta))
+            }
+          } catch {
+            // skip malformed chunk
+          }
+        }
+      } catch (e) {
+        controller.error(e)
+      }
+    },
+    cancel() {
+      reader.cancel()
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'no-cache',
+      'X-Accel-Buffering': 'no',
+    },
+  })
 }

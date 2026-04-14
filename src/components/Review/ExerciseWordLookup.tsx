@@ -25,7 +25,7 @@ export function useExerciseWordLookup(language: Language, sentence?: string) {
       await initLemmatizer(language)
       const lemma = getLemma(wordText, language) || wordText.toLowerCase()
       const now = new Date()
-      const id = await db.words.add({
+      const newWord: Omit<Word, 'id'> = {
         text: wordText.toLowerCase(),
         lemma,
         level: 'new',
@@ -34,7 +34,8 @@ export function useExerciseWordLookup(language: Language, sentence?: string) {
         reviewStreak: 0,
         createdAt: now,
         updatedAt: now,
-      } as Word)
+      }
+      const id = await db.words.add(newWord as Word)
       const created = await db.words.get(id as number)
       if (created) {
         setWord(created)
