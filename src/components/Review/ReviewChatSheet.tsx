@@ -1,8 +1,41 @@
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, type ReactNode } from 'react'
 import { Sheet } from '@/components/ui/sheet'
 import { Send, Loader2, Sparkles } from 'lucide-react'
 import { streamChat, type ChatMessage, type ChatContext } from '@/services/chat'
 import { cn } from '@/lib/utils'
+
+/** Minimal inline markdown renderer for chat messages. Handles **bold**,
+ * *italic*, and `code`. Safe with streaming partial text — incomplete markers
+ * are simply rendered as-is until the closing marker arrives. */
+function renderMarkdown(text: string): ReactNode[] {
+  const nodes: ReactNode[] = []
+  const re = /(\*\*[^*\n]+?\*\*)|(\*[^*\n]+?\*)|(`[^`\n]+?`)/g
+  let lastIdx = 0
+  let match: RegExpExecArray | null
+  let key = 0
+  while ((match = re.exec(text)) !== null) {
+    if (match.index > lastIdx) {
+      nodes.push(text.slice(lastIdx, match.index))
+    }
+    const full = match[0]
+    if (full.startsWith('**')) {
+      nodes.push(<strong key={key++}>{full.slice(2, -2)}</strong>)
+    } else if (full.startsWith('`')) {
+      nodes.push(
+        <code key={key++} className="rounded bg-cream-dark px-1 py-0.5 font-mono text-[0.9em]">
+          {full.slice(1, -1)}
+        </code>,
+      )
+    } else {
+      nodes.push(<em key={key++}>{full.slice(1, -1)}</em>)
+    }
+    lastIdx = match.index + full.length
+  }
+  if (lastIdx < text.length) {
+    nodes.push(text.slice(lastIdx))
+  }
+  return nodes
+}
 
 interface ReviewChatSheetProps {
   open: boolean
@@ -145,18 +178,20 @@ export default function ReviewChatSheet({ open, onClose, context }: ReviewChatSh
                 <div
                   key={i}
                   className={cn(
-                    'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed',
+                    'max-w-[85%] whitespace-pre-wrap rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed',
                     m.role === 'user'
                       ? 'self-end bg-brown text-cream'
                       : 'self-start bg-white text-brown border border-brown-muted/15',
                   )}
                 >
-                  {m.content || (
-                    <span className="inline-flex items-center gap-1.5 text-brown-muted">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Thinking…
-                    </span>
-                  )}
+                  {m.content
+                    ? (m.role === 'assistant' ? renderMarkdown(m.content) : m.content)
+                    : (
+                      <span className="inline-flex items-center gap-1.5 text-brown-muted">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        Thinking…
+                      </span>
+                    )}
                 </div>
               ))}
             </div>
