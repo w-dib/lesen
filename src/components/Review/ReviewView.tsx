@@ -10,7 +10,11 @@ import { recordActivity } from '@/services/streak'
 import MatchExercise from './MatchExercise'
 import BuilderExercise from './BuilderExercise'
 import ListenExercise from './ListenExercise'
+import TappableSentence from './TappableSentence'
+import ReviewChatSheet from './ReviewChatSheet'
+import { useExerciseWordLookup } from './ExerciseWordLookup'
 import { getDefaultLanguage } from '@/components/Settings/SettingsView'
+import { MessageCircleQuestion } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const SESSION_SIZE = 10
@@ -224,6 +228,20 @@ export default function ReviewView() {
     setAnswered(false)
   }, [])
 
+  const language = getDefaultLanguage()
+  const currentSentence = currentCard?.exercise?.sentence
+  const { handleTapWord, sheet: wordSheet } = useExerciseWordLookup(language, currentSentence)
+
+  const [chatOpen, setChatOpen] = useState(false)
+  const chatContext = useMemo(() => ({
+    lemma: currentCard?.group.lemma,
+    translation: currentCard?.group.translation,
+    sentence: currentCard?.exercise?.sentence,
+    translationSentence: currentCard?.exercise?.translation,
+    exerciseType: currentCard?.type,
+    language,
+  }), [currentCard, language])
+
   // Mark exercises as used when session ends
   useEffect(() => {
     if (isSessionDone && sessionCards.length > 0) {
@@ -328,6 +346,7 @@ export default function ReviewView() {
             flipped={flipped}
             onFlip={() => setFlipped(true)}
             onResult={recordResult}
+            onTapWord={handleTapWord}
           />
         )}
         {currentCard && currentCard.type === 'cloze' && (
@@ -341,6 +360,7 @@ export default function ReviewView() {
               const correct = answer === currentCard.group.lemma
               recordResult(correct)
             }}
+            onTapWord={handleTapWord}
           />
         )}
         {currentCard && currentCard.type === 'builder' && currentCard.exercise && (
@@ -404,6 +424,25 @@ export default function ReviewView() {
         )}
       </div>
       </div>
+
+      {/* Floating chat button */}
+      <button
+        onClick={() => setChatOpen(true)}
+        className="fixed bottom-6 right-5 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-gold text-brown shadow-lg transition-transform active:scale-95"
+        title="Ask about this question"
+      >
+        <MessageCircleQuestion className="h-6 w-6" />
+      </button>
+
+      {/* Chat sheet */}
+      <ReviewChatSheet
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        context={chatContext}
+      />
+
+      {/* Word lookup sheet for tapped exercise words */}
+      {wordSheet}
     </div>
   )
 }
@@ -427,18 +466,20 @@ function FlashcardExercise({
   flipped,
   onFlip,
   onResult,
+  onTapWord,
 }: {
   card: SessionCard
   flipped: boolean
   onFlip: () => void
   onResult: (correct: boolean) => void
+  onTapWord: (wordText: string, existingWord: Word | undefined) => void
 }) {
   const { group, exercise } = card
 
   return (
     <div className="flex flex-1 flex-col items-center justify-center">
       {/* Card */}
-      <button
+      <div
         onClick={() => !flipped && onFlip()}
         className={cn(
           'w-full max-w-sm rounded-2xl border border-brown-muted/15 bg-white p-8 shadow-sm transition-all',
@@ -459,7 +500,9 @@ function FlashcardExercise({
             </p>
             {exercise?.sentence && (
               <div className="mt-4 rounded-lg bg-cream-dark/50 p-3">
-                <p className="text-sm italic text-brown">{exercise.sentence}</p>
+                <p className="text-sm italic text-brown">
+                  <TappableSentence sentence={exercise.sentence} onTapWord={onTapWord} />
+                </p>
                 <p className="mt-1 text-xs text-brown-muted">{exercise.translation}</p>
               </div>
             )}
@@ -469,7 +512,7 @@ function FlashcardExercise({
         {!flipped && (
           <p className="mt-4 text-center text-xs text-brown-muted">Tap to reveal</p>
         )}
-      </button>
+      </div>
 
       {/* Answer buttons */}
       {flipped && (
@@ -502,11 +545,13 @@ function ClozeExercise({
   selectedAnswer,
   revealed,
   onSelect,
+  onTapWord,
 }: {
   card: SessionCard
   selectedAnswer: string | null
   revealed: boolean
   onSelect: (answer: string) => void
+  onTapWord: (wordText: string, existingWord: Word | undefined) => void
 }) {
   const { group, exercise } = card
 
@@ -532,7 +577,9 @@ function ClozeExercise({
         <p className="mb-1 text-xs font-medium uppercase tracking-wide text-brown-muted">
           Fill in the blank
         </p>
-        <p className="text-lg leading-relaxed text-brown">{blankSentence}</p>
+        <p className="text-lg leading-relaxed text-brown">
+          <TappableSentence sentence={blankSentence} onTapWord={onTapWord} />
+        </p>
         {revealed && (
           <p className="mt-3 text-sm text-brown-muted">{exercise.translation}</p>
         )}
