@@ -70,7 +70,7 @@ Respond in JSON only, no markdown:
 
 For each word, create:
 1. A natural ${language} sentence using the EXACT lemma form of the word (B1 level, 8-15 words). The sentence MUST contain the exact lemma as given above.
-2. The same sentence but with the target word replaced by "______" (six underscores). IMPORTANT: double-check the word is actually removed and not still visible.
+2. The same sentence but with the target word REPLACED by "______" (exactly six underscores). CRITICAL: the "blanked" field MUST contain exactly "______" where the target word used to be — do NOT just delete the word, do NOT skip the underscores. The target word must NOT appear anywhere in the blanked sentence. Example: sentence "Ich rufe meinen Bruder an." → blanked "Ich rufe meinen Bruder ______." (if target is "an") or "Ich ______ meinen Bruder an." (if target is "rufe").
 3. The English translation of the sentence.
 4. Three distractor words: same part of speech and difficulty, but SEMANTICALLY UNRELATED. Do NOT use synonyms, antonyms, or words from the same topic. Example: if the answer is "schnell", do NOT use "langsam" or "beeilen" — use unrelated words like "wichtig", "freundlich", "müde".
 

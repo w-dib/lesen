@@ -77,27 +77,24 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   // Transform DeepSeek's SSE stream into a plain text stream of deltas.
-  const reader = deepseekRes.body.getReader()
-  const decoder = new TextDecoder()
-  const encoder = new TextEncoder()
-  let buffer = ''
-
+  // Uses start() so we eagerly drain the upstream reader — pull() can stall
+  // under backpressure and cause the stream to stop mid-response.
   const stream = new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      try {
-        const { done, value } = await reader.read()
-        if (done) {
-          controller.close()
-          return
-        }
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
+    async start(controller) {
+      const reader = deepseekRes.body!.getReader()
+      const decoder = new TextDecoder()
+      const encoder = new TextEncoder()
+      let buffer = ''
+
+      const flushLines = (forceFlushBuffer: boolean) => {
+        const parts = buffer.split('\n')
+        buffer = forceFlushBuffer ? '' : parts.pop() || ''
+        const lines = forceFlushBuffer ? parts.concat(buffer ? [buffer] : []) : parts
         for (const line of lines) {
           const trimmed = line.trim()
           if (!trimmed.startsWith('data:')) continue
           const data = trimmed.slice(5).trim()
-          if (data === '[DONE]') continue
+          if (!data || data === '[DONE]') continue
           try {
             const parsed = JSON.parse(data)
             const delta = parsed.choices?.[0]?.delta?.content
@@ -108,12 +105,25 @@ export default async function handler(req: Request): Promise<Response> {
             // skip malformed chunk
           }
         }
+      }
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buffer += decoder.decode(value, { stream: true })
+          flushLines(false)
+        }
+        // Flush any trailing partial buffer in case the upstream didn't end
+        // with a newline.
+        buffer += decoder.decode()
+        flushLines(true)
+        controller.close()
       } catch (e) {
         controller.error(e)
+      } finally {
+        try { reader.releaseLock() } catch { /* already released */ }
       }
-    },
-    cancel() {
-      reader.cancel()
     },
   })
 

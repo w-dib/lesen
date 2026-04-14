@@ -564,11 +564,17 @@ function ClozeExercise({
 
   if (!exercise) return null
 
-  // Use pre-blanked sentence from API, with regex fallback
-  const blankSentence = exercise.blanked || exercise.sentence.replace(
-    new RegExp(`\\b${group.lemma}\\b`, 'i'),
-    '______'
-  )
+  // Use pre-blanked sentence from API only if it actually contains the blank
+  // marker. Some older cached exercises came back with the word deleted but
+  // no "______" in its place — fall back to regex replacement in that case.
+  const rawBlanked = exercise.blanked
+  const hasMarker = typeof rawBlanked === 'string' && rawBlanked.includes('______')
+  const blankSentence = hasMarker
+    ? rawBlanked
+    : exercise.sentence.replace(
+        new RegExp(`\\b${group.lemma}\\b`, 'i'),
+        '______',
+      )
 
   return (
     <div className="flex flex-1 flex-col">
