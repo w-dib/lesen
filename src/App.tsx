@@ -45,7 +45,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
-      <div className="flex w-full flex-1 flex-col lg:ml-56">
+      <div className="flex w-full flex-1 flex-col overflow-x-hidden lg:pl-56">
         <main className="flex flex-1 flex-col">
           <Routes>
             <Route path="/" element={resumePath ? <Navigate to={resumePath} replace /> : <LibraryView />} />

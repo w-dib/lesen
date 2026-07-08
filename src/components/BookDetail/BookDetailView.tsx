@@ -82,7 +82,7 @@ export default function BookDetailView() {
       </div>
 
       {/* Book info + chapters — side by side on desktop */}
-      <div className="flex flex-1 flex-col lg:flex-row lg:gap-8 lg:px-8 lg:pt-4">
+      <div className="flex flex-1 flex-col lg:mx-auto lg:w-full lg:max-w-5xl lg:flex-row lg:gap-8 lg:px-8 lg:pt-4">
         {/* Book info */}
         <div className="flex flex-col items-center px-5 pb-5 pt-2 lg:sticky lg:top-4 lg:w-64 lg:flex-shrink-0 lg:self-start lg:pb-0">
           {book.coverUrl ? (

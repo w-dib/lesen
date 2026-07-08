@@ -252,24 +252,26 @@ export default function ReaderView() {
       </div>
 
       {/* Sticky bottom page nav */}
-      <div className="sticky bottom-0 z-40 flex items-center justify-between border-t border-brown-muted/10 bg-cream/95 px-3 py-2 backdrop-blur-sm">
-        <button
-          disabled={page === 0 && !prevChapter}
-          onClick={goPrevPage}
-          className="rounded-lg p-2 text-brown-muted transition-colors hover:bg-cream-dark hover:text-brown disabled:opacity-30"
-        >
-          <ChevronLeft className="h-5 w-5" />
-        </button>
-        <span className="text-xs text-brown-muted">
-          {totalPages > 1 ? `${page + 1} / ${totalPages}` : chapter.title}
-        </span>
-        <button
-          disabled={page === totalPages - 1 && !nextChapter}
-          onClick={goNextPage}
-          className="rounded-lg p-2 text-brown-muted transition-colors hover:bg-cream-dark hover:text-brown disabled:opacity-30"
-        >
-          <ChevronRight className="h-5 w-5" />
-        </button>
+      <div className="sticky bottom-0 z-40 border-t border-brown-muted/10 bg-cream/95 backdrop-blur-sm">
+        <div className="mx-auto flex w-full items-center justify-between px-3 py-2 lg:max-w-2xl">
+          <button
+            disabled={page === 0 && !prevChapter}
+            onClick={goPrevPage}
+            className="rounded-lg p-2 text-brown-muted transition-colors hover:bg-cream-dark hover:text-brown disabled:opacity-30"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <span className="text-xs text-brown-muted">
+            {totalPages > 1 ? `${page + 1} / ${totalPages}` : chapter.title}
+          </span>
+          <button
+            disabled={page === totalPages - 1 && !nextChapter}
+            onClick={goNextPage}
+            className="rounded-lg p-2 text-brown-muted transition-colors hover:bg-cream-dark hover:text-brown disabled:opacity-30"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       {/* Word bottom sheet */}

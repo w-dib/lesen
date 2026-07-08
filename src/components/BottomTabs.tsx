@@ -13,11 +13,19 @@ export default function BottomTabs() {
   const navigate = useNavigate()
 
   const isTabRoute = tabs.some(t => t.path === location.pathname)
-  if (!isTabRoute) return null
+
+  // Treat book/reader routes as "under" Library and review as "under" Vocabulary
+  // so the sidebar keeps a sensible item highlighted while browsing a book.
+  function isActive(path: string) {
+    if (location.pathname === path) return true
+    if (path === '/' && location.pathname.startsWith('/book')) return true
+    if (path === '/vocabulary' && location.pathname.startsWith('/review')) return true
+    return false
+  }
 
   return (
     <>
-      {/* Desktop sidebar — hidden on mobile */}
+      {/* Desktop sidebar — persistent across all routes, hidden on mobile */}
       <aside className="fixed left-0 top-0 z-50 hidden h-full w-56 flex-col border-r border-brown-muted/15 bg-white lg:flex">
         <div className="flex items-center gap-2.5 px-5 py-6">
           <img src="/logo.png" alt="Lesen" className="h-8 w-8" />
@@ -25,7 +33,7 @@ export default function BottomTabs() {
         </div>
         <nav className="flex flex-1 flex-col gap-1 px-3">
           {tabs.map(({ path, label, icon: Icon }) => {
-            const active = location.pathname === path
+            const active = isActive(path)
             return (
               <button
                 key={path}
@@ -45,8 +53,11 @@ export default function BottomTabs() {
         </nav>
       </aside>
 
-      {/* Mobile bottom tabs — hidden on desktop */}
-      <nav className="sticky bottom-0 z-50 flex border-t border-brown-muted/15 bg-cream/95 backdrop-blur-sm lg:hidden">
+      {/* Mobile bottom tabs — only on tab routes, hidden on desktop */}
+      <nav className={cn(
+        'sticky bottom-0 z-50 flex border-t border-brown-muted/15 bg-cream/95 backdrop-blur-sm lg:hidden',
+        !isTabRoute && 'hidden',
+      )}>
         {tabs.map(({ path, label, icon: Icon }) => {
           const active = location.pathname === path
           return (

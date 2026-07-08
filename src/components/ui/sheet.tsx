@@ -23,14 +23,15 @@ export function Sheet({ open, onClose, children, className, title }: SheetProps)
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col justify-end">
+    <div className="fixed inset-0 z-[60] flex flex-col justify-end lg:items-center lg:justify-center lg:p-6">
       <div
         className="absolute inset-0 bg-black/40 animate-fade-in"
         onClick={onClose}
       />
       <div
         className={cn(
-          'relative z-10 max-h-[90vh] overflow-y-auto rounded-t-2xl bg-cream shadow-xl animate-slide-up',
+          'relative z-10 max-h-[90vh] w-full overflow-y-auto rounded-t-2xl bg-cream shadow-xl animate-slide-up',
+          'lg:max-w-lg lg:rounded-2xl lg:animate-fade-in',
           className
         )}
       >

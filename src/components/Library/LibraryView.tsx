@@ -27,7 +27,7 @@ export default function LibraryView() {
   return (
     <div className="flex flex-1 flex-col">
       {/* Header */}
-      <div className="px-5 pb-2 pt-[calc(env(safe-area-inset-top,16px)+16px)]">
+      <div className="px-5 pb-2 pt-[calc(env(safe-area-inset-top,16px)+16px)] lg:mx-auto lg:w-full lg:max-w-5xl">
         {showArchived ? (
           <div className="mb-3 flex items-center gap-2">
             <button
@@ -63,7 +63,7 @@ export default function LibraryView() {
           <p className="mt-1 text-sm text-brown-muted">Tap + to add your first content</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-2 overflow-y-auto px-4 pb-24 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 overflow-y-auto px-4 pb-24 lg:mx-auto lg:w-full lg:max-w-5xl lg:grid-cols-2 lg:pb-8 xl:grid-cols-3">
           {displayBooks?.map(book => (
             <BookCardWithStats key={book.id} book={book} />
           ))}
@@ -72,7 +72,7 @@ export default function LibraryView() {
 
       {/* Archived toggle — only show in active view */}
       {archivedCount > 0 && !showArchived && (
-        <div className="px-4 pb-2">
+        <div className="px-4 pb-2 lg:mx-auto lg:w-full lg:max-w-5xl">
           <button
             onClick={() => setShowArchived(true)}
             className="flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs text-brown-muted transition-colors hover:text-brown"
