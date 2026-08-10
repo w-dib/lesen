@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { getReaderFontSize } from '@/components/Settings/SettingsView'
 import { WordSpan } from './WordSpan'
 import WordBottomSheet from './WordBottomSheet'
-import { tokenize } from '@/services/textProcessor'
+import { tokenize, isChapterHeading, type Token } from '@/services/textProcessor'
 import { db, type Word, type Chapter } from '@/db/database'
 import { isKnownWord } from '@/services/lemmatizer'
 import { recordActivity } from '@/services/streak'
@@ -96,6 +96,25 @@ export default function ReaderView() {
     for (const t of pageTokens) set.add(t.word.toLowerCase())
     return [...set]
   }, [pageTokens])
+
+  // Group the current page's tokens into paragraphs by the line breaks preserved
+  // in each token's leading whitespace, so the reader shows real paragraph
+  // structure instead of one flat block.
+  const paragraphs = useMemo(() => {
+    if (!pageRange) return [] as { token: Token; idx: number }[][]
+    const groups: { token: Token; idx: number }[][] = []
+    let current: { token: Token; idx: number }[] = []
+    pageTokens.forEach((token, i) => {
+      const idx = pageRange.start + i
+      if (i > 0 && /\n/.test(token.pre) && current.length) {
+        groups.push(current)
+        current = []
+      }
+      current.push({ token, idx })
+    })
+    if (current.length) groups.push(current)
+    return groups
+  }, [pageTokens, pageRange])
 
   const wordMap = useLiveQuery(async () => {
     if (uniqueWordTexts.length === 0) return new Map<string, Word>()
@@ -215,16 +234,43 @@ export default function ReaderView() {
           <p className="text-sm font-medium text-brown truncate">{chapter.title}</p>
         </div>
 
-        <div className="leading-[2] text-brown" dir={book?.language === 'ar' ? 'rtl' : 'ltr'} style={{ fontSize: `${getReaderFontSize()}px` }}>
-          {pageTokens.map((token, i) => {
-            const globalIdx = pageRange.start + i
+        <div className="text-brown" dir={book?.language === 'ar' ? 'rtl' : 'ltr'} style={{ fontSize: `${getReaderFontSize()}px` }}>
+          {/* Chapter title as an in-body heading on the first page of the chapter */}
+          {page === 0 && (
+            <h1 className="mb-5 font-serif text-2xl font-bold leading-snug text-brown">
+              {chapter.title}
+            </h1>
+          )}
+          {paragraphs.map((para, pi) => {
+            const lineText = para.map(({ token }) => token.word + token.post).join(' ')
+            const heading = isChapterHeading(lineText)
+            const Tag = heading ? 'h2' : 'p'
             return (
-              <WordSpan
-                key={globalIdx}
-                token={token}
-                word={wordMap.get(token.word.toLowerCase())}
-                onTap={() => handleWordTap(globalIdx)}
-              />
+              <Tag
+                key={pi}
+                className={
+                  heading
+                    ? 'mb-3 mt-6 font-serif text-xl font-bold leading-snug text-brown'
+                    : 'mb-4 leading-[2]'
+                }
+              >
+                {para.map(({ token, idx }, j) => {
+                  // Drop the manual line break now that paragraphs are real blocks,
+                  // but keep any leading punctuation (quotes, dashes) intact.
+                  const pre =
+                    j === 0
+                      ? token.pre.replace(/\s+/g, '')
+                      : token.pre.replace(/\s*\n\s*/g, ' ')
+                  return (
+                    <WordSpan
+                      key={idx}
+                      token={{ ...token, pre }}
+                      word={wordMap.get(token.word.toLowerCase())}
+                      onTap={() => handleWordTap(idx)}
+                    />
+                  )
+                })}
+              </Tag>
             )
           })}
         </div>

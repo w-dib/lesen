@@ -47,6 +47,25 @@ export function isNumber(word: string): boolean {
   return /^\d[\d:.,]*$/.test(word)
 }
 
+// Common chapter-heading openers across the languages we support (+ English).
+// Deliberately generic — NOT tuned to any single book.
+const HEADING_KEYWORD_RE = /^(kapitel|kapital|chapter|teil|part|abschnitt|prolog|epilog|vorwort|nachwort|einleitung|szene|akt|глава|часть|hoofstuk|deel|الفصل|الباب)\b/i
+// A line that is only a number or roman numeral, optionally with a trailing separator.
+const HEADING_NUMERAL_RE = /^(\d{1,3}|[IVXLCDM]{1,7})\s*[.)\-–:]?\s*$/i
+
+/**
+ * Heuristic: does this single line look like a chapter/section heading?
+ * A heading is short, has no sentence-ending punctuation, and either starts
+ * with a known heading word or is a standalone number/numeral. General across
+ * books — never keyed to specific titles.
+ */
+export function isChapterHeading(line: string): boolean {
+  const t = line.trim()
+  if (!t || t.length > 60) return false
+  if (/[.!?…]$/.test(t)) return false
+  return HEADING_KEYWORD_RE.test(t) || HEADING_NUMERAL_RE.test(t)
+}
+
 export function findSentenceBounds(text: string, wordIndex: number): { start: number; end: number } {
   const tokens = tokenize(text)
   let sentenceStart = 0

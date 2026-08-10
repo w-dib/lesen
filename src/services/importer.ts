@@ -1,6 +1,6 @@
 import { db, type Book, type BookType, type Chapter, type Word, type Language } from '@/db/database'
 import { getLemma, initLemmatizer } from '@/services/lemmatizer'
-import { extractUniqueWords, countWords, isNumber } from '@/services/textProcessor'
+import { extractUniqueWords, countWords, isNumber, isChapterHeading } from '@/services/textProcessor'
 
 function getDefaultChapterSize(): number {
   return Number(localStorage.getItem('lesen-chapter-size')) || 3000
@@ -25,7 +25,8 @@ export async function importBook(options: ImportOptions): Promise<number> {
 
   const chapters = preChapters
     ? preChapters.map(c => ({ title: c.title, content: c.content }))
-    : splitIntoChapters(text, chapterSize).map((content, i) => ({
+    : splitByHeadings(text)
+      ?? splitIntoChapters(text, chapterSize).map((content, i) => ({
         title: `Chapter ${i + 1}`,
         content,
       }))
@@ -62,6 +63,39 @@ export async function importBook(options: ImportOptions): Promise<number> {
   await processWords(allUniqueWords, bookId as number, language)
 
   return bookId as number
+}
+
+/**
+ * Split text into chapters at lines that look like real chapter headings.
+ * Returns null when the source has fewer than two detected headings, so the
+ * caller falls back to size-based splitting. General across books — relies on
+ * the shared `isChapterHeading` heuristic, not on any specific title.
+ */
+function splitByHeadings(text: string): { title: string; content: string }[] | null {
+  const lines = text.split('\n')
+  const headingIdx: number[] = []
+  for (let i = 0; i < lines.length; i++) {
+    if (isChapterHeading(lines[i])) headingIdx.push(i)
+  }
+  if (headingIdx.length < 2) return null
+
+  const chapters: { title: string; content: string }[] = []
+
+  // Preserve any text before the first heading (front matter) as its own chapter.
+  const preamble = lines.slice(0, headingIdx[0]).join('\n').trim()
+  if (preamble.length > 0) {
+    chapters.push({ title: 'Introduction', content: preamble })
+  }
+
+  for (let k = 0; k < headingIdx.length; k++) {
+    const start = headingIdx[k]
+    const end = k + 1 < headingIdx.length ? headingIdx[k + 1] : lines.length
+    const title = lines[start].trim()
+    const content = lines.slice(start + 1, end).join('\n').trim()
+    if (content.length > 0) chapters.push({ title, content })
+  }
+
+  return chapters.length > 0 ? chapters : null
 }
 
 function splitIntoChapters(text: string, maxSize: number): string[] {
