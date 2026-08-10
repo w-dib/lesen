@@ -1,28 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Sheet } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, Loader2, MessageSquareQuote, RefreshCw, Volume2 } from 'lucide-react'
+import { ChevronRight, ExternalLink, Loader2, MessageSquareQuote, RefreshCw, Volume2 } from 'lucide-react'
 import { db, type Word, type Language } from '@/db/database'
-import { lookupWord, translateSentence, getDictUrl } from '@/services/dictionary'
+import { lookupWord, translateSentence, defineWord, getDictUrl } from '@/services/dictionary'
 import { preGenerateExercises } from '@/services/exerciseCache'
 import { cn } from '@/lib/utils'
 
 const LANG_BCP47: Record<Language, string> = { de: 'de-DE', af: 'af-ZA', ru: 'ru-RU', ar: 'ar-SA' }
-
-/** Normalize a translation for dedup comparison */
-function normalizeTranslation(t: string): string {
-  return t.toLowerCase().replace(/^to\s+/, '').trim()
-}
-
-/** Merge a new translation into an existing ` · `-separated string. Returns the merged string. */
-function mergeTranslation(existing: string | undefined, newTranslation: string): string {
-  if (!existing) return newTranslation
-  const parts = existing.split(' · ').map(s => s.trim()).filter(Boolean)
-  const normalizedNew = normalizeTranslation(newTranslation)
-  const alreadyExists = parts.some(p => normalizeTranslation(p) === normalizedNew)
-  if (alreadyExists) return existing
-  return [...parts, newTranslation].join(' · ')
-}
 
 function speak(text: string, lang: Language) {
   speechSynthesis.cancel()
@@ -56,25 +41,42 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
   const [sentenceTranslation, setSentenceTranslation] = useState<string | null>(null)
   const [translatingSentence, setTranslatingSentence] = useState(false)
 
-  /** Process a lookup result: merge translation, update lemma if corrected */
+  // "All meanings" accordion state
+  const [defsOpen, setDefsOpen] = useState(false)
+  const [allDefs, setAllDefs] = useState<string[] | null>(null)
+  const [loadingDefs, setLoadingDefs] = useState(false)
+
+  /**
+   * Store a lookup result as THE definition for this saved context (no longer
+   * merged into a blob) so the quiz tests the meaning the word was saved with.
+   * Also records the sentence that anchors it, and corrects the lemma.
+   */
   const processLookupResult = useCallback((result: { lemma: string; translation: string }, w: Word) => {
-    const merged = mergeTranslation(w.translation, result.translation)
-    setTranslation(merged)
-    db.words.update(w.id, { translation: merged })
+    setTranslation(result.translation)
+    db.words.update(w.id, {
+      translation: result.translation,
+      ...(sentence ? { contextSentence: sentence } : {}),
+    })
 
     if (result.lemma.toLowerCase() !== w.lemma.toLowerCase()) {
       setCorrectedLemma(result.lemma.toLowerCase())
       db.words.update(w.id, { lemma: result.lemma.toLowerCase() })
     }
-  }, [])
+  }, [sentence])
 
   useEffect(() => {
     if (!open || !word) {
       setTranslation(null)
       setCorrectedLemma(null)
       setSentenceTranslation(null)
+      setDefsOpen(false)
+      setAllDefs(null)
       return
     }
+
+    // Reset the accordion for the newly-opened word, preloading any cached senses
+    setDefsOpen(false)
+    setAllDefs(word.allDefinitions ?? null)
 
     // Show cached translation immediately
     if (word.translation) {
@@ -105,6 +107,27 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
     setSentenceTranslation(result)
     setTranslatingSentence(false)
   }, [sentence, language])
+
+  const handleToggleDefs = useCallback(async () => {
+    if (!word) return
+    const next = !defsOpen
+    setDefsOpen(next)
+    if (!next || (allDefs && allDefs.length > 0)) return
+
+    // Use cached senses if present, otherwise fetch the full dictionary once
+    if (word.allDefinitions?.length) {
+      setAllDefs(word.allDefinitions)
+      return
+    }
+    setLoadingDefs(true)
+    const lemma = correctedLemma || word.lemma
+    const defs = await defineWord(lemma, language)
+    if (defs?.length) {
+      setAllDefs(defs)
+      db.words.update(word.id, { allDefinitions: defs })
+    }
+    setLoadingDefs(false)
+  }, [word, defsOpen, allDefs, correctedLemma, language])
 
   const handleLevelChange = useCallback(async (newLevel: Level) => {
     if (!word) return
@@ -191,6 +214,41 @@ export default function WordBottomSheet({ open, onClose, word, sentence, languag
             </div>
           )}
         </div>
+
+        {/* All meanings accordion — full dictionary, independent of context */}
+        {translation && !translating && (
+          <div className="mb-4">
+            <button
+              onClick={handleToggleDefs}
+              className="flex w-full items-center gap-1.5 text-xs font-medium text-brown-muted transition-colors hover:text-brown"
+              aria-expanded={defsOpen}
+            >
+              <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', defsOpen && 'rotate-90')} />
+              All meanings
+            </button>
+            {defsOpen && (
+              <div className="mt-2 rounded-lg border border-brown-muted/15 bg-cream-dark/40 p-3">
+                {loadingDefs ? (
+                  <div className="flex items-center gap-2 text-sm text-brown-muted">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Looking up all meanings...
+                  </div>
+                ) : allDefs && allDefs.length > 0 ? (
+                  <ul className="flex flex-col gap-1.5">
+                    {allDefs.map((def, i) => (
+                      <li key={i} className="flex gap-2 text-sm text-brown">
+                        <span className="select-none text-brown-muted/60">&bull;</span>
+                        <span>{def}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-brown-muted">No additional meanings found</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Re-lookup button — shown when translation exists and we have sentence context */}
         {translation && !translating && sentence && (

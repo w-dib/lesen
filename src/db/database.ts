@@ -40,7 +40,12 @@ export interface Word {
   id: number
   text: string
   lemma: string
+  /** The definition for the context this word was saved in — what the quiz tests. */
   translation?: string
+  /** The sentence the word was saved/looked-up in, anchoring `translation`. */
+  contextSentence?: string
+  /** All dictionary senses, lazily fetched for the "all meanings" accordion. */
+  allDefinitions?: string[]
   level: 'new' | 'learning' | 'known' | 'ignored'
   bookIds: number[]
   lookupCount: number

@@ -43,6 +43,34 @@ Respond in JSON only, no markdown:
       return res.status(200).json(result)
     }
 
+    // Full dictionary mode: all common meanings of a word, context-independent
+    if (body.define) {
+      const { word, language } = body as { word: string; language: string }
+      const prompt = `You are a ${language}-English dictionary. List the distinct common English meanings of the ${language} word "${word}".
+
+Rules:
+- Return between 2 and 6 senses, ordered most common first.
+- Each entry is a short English gloss, optionally followed by a brief 2-4 word usage hint in parentheses (e.g. "bright (of light)", "clever").
+- Do NOT include the ${language} word itself, example sentences, or part-of-speech labels.
+
+Respond in JSON only, no markdown:
+{"definitions": ["meaning one", "meaning two"]}`
+
+      const response = await callDeepSeek(apiKey, prompt, 250)
+      if (!response.ok) {
+        return res.status(response.status).json({ error: await response.text() })
+      }
+
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content || '{}'
+      const jsonStr = content.replace(/```json?\n?/g, '').replace(/```/g, '').trim()
+      const result = JSON.parse(jsonStr)
+      const definitions = Array.isArray(result.definitions)
+        ? result.definitions.filter((d: unknown) => typeof d === 'string' && d.trim().length > 0)
+        : []
+      return res.status(200).json({ definitions })
+    }
+
     // Translation mode
     if (body.translate) {
       const { text, language } = body as { text: string; language: string }

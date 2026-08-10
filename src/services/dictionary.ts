@@ -71,6 +71,30 @@ export async function translateWord(word: string, lang: Language = 'de'): Promis
   return translateSentence(word, lang)
 }
 
+/**
+ * Full dictionary lookup: return ALL common English meanings of a word,
+ * independent of any sentence context. Used for the "all meanings" accordion.
+ */
+export async function defineWord(word: string, lang: Language = 'de'): Promise<string[] | null> {
+  try {
+    const langName = LANG_NAMES[lang]
+    const res = await fetch('/api/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        define: true,
+        word,
+        language: langName,
+      }),
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return Array.isArray(data.definitions) && data.definitions.length ? data.definitions : null
+  } catch {
+    return null
+  }
+}
+
 export function getDictUrl(word: string, lang: Language = 'de'): { url: string; label: string } {
   switch (lang) {
     case 'de':
