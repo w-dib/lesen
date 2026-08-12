@@ -259,7 +259,7 @@ export default function ReviewView() {
       <div className="flex flex-1 flex-col">
         <ReviewHeader onBack={() => navigate('/vocabulary')} />
         <div className="flex flex-1 flex-col items-center justify-center gap-3">
-          <img src="/logo.png" alt="Loading" className="h-12 w-12 animate-spin" />
+          <img src="/logo.png" alt="Loading" className="h-12 w-12 animate-pulse" />
           <p className="text-sm text-brown-muted">Generating exercises...</p>
         </div>
       </div>
